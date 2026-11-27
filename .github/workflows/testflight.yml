@@ -22,8 +22,6 @@ jobs:
       KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-      ARCHIVE_PATH: ${{ runner.temp }}/Efirelle.xcarchive
-      EXPORT_PATH: ${{ runner.temp }}/export
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +37,11 @@ jobs:
           fi
           KEY_PATH="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
           printf '%s\n' "$PRIVATE_KEY" > "$KEY_PATH"
-          echo "KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+          {
+            echo "KEY_PATH=$KEY_PATH"
+            echo "ARCHIVE_PATH=$RUNNER_TEMP/Efirelle.xcarchive"
+            echo "EXPORT_PATH=$RUNNER_TEMP/export"
+          } >> "$GITHUB_ENV"
 
       - name: Archive
         run: |

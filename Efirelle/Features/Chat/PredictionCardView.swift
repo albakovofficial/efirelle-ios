@@ -13,7 +13,7 @@ struct PredictionCardView: View {
             HStack {
                 Text("ПРОГНОЗ")
                 Spacer()
-                Text(isOpen ? "ещё \(Formatters.clock(timeLeft))" : "приём ставок закрыт")
+                Text(isOpen ? "ещё \(Formatters.clock(timeLeft))" : "приём прогнозов закрыт")
                     .monospacedDigit()
             }
             .font(.brandMicro)
@@ -38,9 +38,9 @@ struct PredictionCardView: View {
 
     private var footer: String {
         if selectedOutcomeID != nil {
-            return "Ставка принята · \(ChatViewModel.predictionStake) искр"
+            return "Прогноз принят · за верный ответ +\(ChatViewModel.predictionReward) искр"
         }
-        return "Ставка в искрах · \(Formatters.count(prediction.participants, .participants, compact: false))"
+        return "Бесплатно · за верный ответ +\(ChatViewModel.predictionReward) искр · \(Formatters.count(prediction.participants, .participants, compact: false))"
     }
 
     private func outcomeButton(_ outcome: Prediction.Outcome) -> some View {

@@ -70,7 +70,7 @@ enum MockData {
     static let chatHistory: [ChatEntry] = [
         .message(ChatMessage(id: "c1", author: "Аня", tone: .rose, badge: .subscriber(months: 12), text: "этот камбэк войдёт в историю")),
         .message(ChatMessage(id: "c2", author: "Дмитрий", tone: .sky, badge: .newcomer, text: "первый раз тут, атмосфера топ")),
-        .message(ChatMessage(id: "c3", author: "Ильдар", tone: .lavender, badge: .moderator, text: "Прогноз открыт, ставим искры")),
+        .message(ChatMessage(id: "c3", author: "Ильдар", tone: .lavender, badge: .moderator, text: "Прогноз открыт, выбирайте вариант")),
         .message(ChatMessage(id: "c4", author: "Лиза", tone: .mint, badge: .vip, text: "Тимур, следи за левым флангом")),
         .message(ChatMessage(id: "c5", author: "Георгий", tone: .butter, badge: .subscriber(months: 3), text: "GG, если возьмёт эту карту")),
         .message(ChatMessage(id: "c6", author: "Катя", tone: .peach, badge: .newcomer, text: "а клип второй карты уже есть?")),

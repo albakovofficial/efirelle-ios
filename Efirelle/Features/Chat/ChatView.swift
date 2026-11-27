@@ -4,6 +4,9 @@ import SwiftUI
 struct ChatView: View {
     @Environment(\.streamRepository) private var repository
     @State private var model: ChatViewModel
+    /// Правила чата принимаются один раз перед первым сообщением.
+    @AppStorage("chat.rulesAccepted") private var rulesAccepted = false
+    @State private var showsRules = false
 
     init(streamID: LiveStream.ID) {
         _model = State(initialValue: ChatViewModel(streamID: streamID))
@@ -18,17 +21,47 @@ struct ChatView: View {
             } else {
                 messages
             }
+            if let text = model.sendError ?? model.notice {
+                banner(text, isError: model.sendError != nil)
+            }
             Divider()
             ChatComposer(
                 draft: $model.draft,
                 canSend: model.canSend,
                 sparks: model.viewer?.sparks,
-                onSend: model.send
+                onSend: send
             )
         }
         .background(Palette.surface, in: .rect(cornerRadius: Radius.xl))
         .task { await model.load(from: repository) }
         .task(id: model.prediction?.id) { await model.runPredictionCountdown() }
+        .task(id: model.notice) {
+            guard model.notice != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            model.clearNotice()
+        }
+        .onChange(of: model.draft) { model.clearSendError() }
+        .sheet(isPresented: $showsRules) {
+            ChatRulesView(
+                isAccepted: rulesAccepted,
+                blockedAuthors: model.blockedAuthors,
+                onAccept: {
+                    rulesAccepted = true
+                    showsRules = false
+                    model.send()
+                },
+                onUnblock: model.unblock(author:)
+            )
+        }
+    }
+
+    /// Первое сообщение — только после принятия правил.
+    private func send() {
+        if rulesAccepted {
+            model.send()
+        } else {
+            showsRules = true
+        }
     }
 
     private var header: some View {
@@ -36,6 +69,13 @@ struct ChatView: View {
             Text("Чат")
                 .font(.brandHeadline)
                 .accessibilityAddTraits(.isHeader)
+            Button {
+                showsRules = true
+            } label: {
+                Image(systemName: "info.circle")
+                    .frame(width: TapTarget.minimum, height: TapTarget.minimum)
+            }
+            .accessibilityLabel("Правила чата и поддержка")
             Spacer()
             Picker("Показывать", selection: $model.scope) {
                 ForEach(ChatViewModel.Scope.allCases) { scope in
@@ -45,7 +85,19 @@ struct ChatView: View {
             .pickerStyle(.segmented)
             .fixedSize()
         }
-        .padding(Spacing.m)
+        .padding(.leading, Spacing.m)
+        .padding([.vertical, .trailing], Spacing.s)
+    }
+
+    private func banner(_ text: String, isError: Bool) -> some View {
+        Text(text)
+            .font(.brandCaption)
+            .foregroundStyle(isError ? Palette.live : Palette.inkSoft)
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.xs)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.background)
+            .accessibilityAddTraits(.updatesFrequently)
     }
 
     private var messages: some View {
@@ -62,7 +114,14 @@ struct ChatView: View {
                         )
                     }
                     ForEach(model.visibleEntries) { entry in
-                        ChatEntryRow(entry: entry).id(entry.id)
+                        ChatEntryRow(
+                            entry: entry,
+                            onReport: { message, reason in
+                                Task { await model.report(message, reason: reason, to: repository) }
+                            },
+                            onBlock: { message in model.block(author: message.author) }
+                        )
+                        .id(entry.id)
                     }
                 }
                 .padding(Spacing.m)

@@ -11,4 +11,6 @@ protocol StreamRepository: Sendable {
     func markers(for streamID: LiveStream.ID) async throws -> [Moment]
     func chatHistory(for streamID: LiveStream.ID) async throws -> [ChatEntry]
     func activePrediction(for streamID: LiveStream.ID) async throws -> Prediction?
+    /// Жалоба на сообщение чата — уходит модераторам.
+    func report(messageID: ChatMessage.ID, in streamID: LiveStream.ID, reason: ReportReason) async throws
 }

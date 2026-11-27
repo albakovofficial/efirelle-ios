@@ -25,6 +25,8 @@ struct ChatMessage: Identifiable, Hashable, Sendable {
     let tone: Tone
     let badge: ChatBadge?
     let text: String
+    /// Сообщение текущего зрителя: на свои нельзя пожаловаться и себя нельзя заблокировать.
+    var isOwn = false
 }
 
 struct ChatEvent: Identifiable, Hashable, Sendable {

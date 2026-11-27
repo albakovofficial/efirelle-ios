@@ -38,6 +38,10 @@ struct MockStreamRepository: StreamRepository {
         try await respond(MockData.predictions[streamID])
     }
 
+    func report(messageID: ChatMessage.ID, in streamID: LiveStream.ID, reason: ReportReason) async throws {
+        try await respond(())
+    }
+
     private func respond<Value: Sendable>(_ value: Value) async throws -> Value {
         if latency > .zero {
             try await Task.sleep(for: latency)

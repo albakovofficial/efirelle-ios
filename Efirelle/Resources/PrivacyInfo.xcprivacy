@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Манифест конфиденциальности (обязателен для загрузки в App Store Connect).
+  Приложение не отслеживает пользователей и не собирает данные.
+  UserDefaults (через @AppStorage и ModerationStore) хранит только настройки самого приложения:
+  принятие правил чата и заблокированных авторов — причина CA92.1.
+  Когда появятся аккаунты, аналитика или серверный чат — дополнить NSPrivacyCollectedDataTypes
+  и ответы в App Store Connect → App Privacy.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -46,4 +46,5 @@ private struct FailingRepository: StreamRepository {
     func markers(for streamID: LiveStream.ID) async throws -> [Moment] { throw Failure() }
     func chatHistory(for streamID: LiveStream.ID) async throws -> [ChatEntry] { throw Failure() }
     func activePrediction(for streamID: LiveStream.ID) async throws -> Prediction? { throw Failure() }
+    func report(messageID: ChatMessage.ID, in streamID: LiveStream.ID, reason: ReportReason) async throws { throw Failure() }
 }

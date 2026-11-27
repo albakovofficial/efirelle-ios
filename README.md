@@ -23,6 +23,21 @@ open Efirelle.xcodeproj
 
 `Efirelle.xcodeproj` в репозиторий не коммитится — он всегда генерируется из `project.yml`, поэтому не бывает конфликтов слияния.
 
+## Сборки в GitHub Actions
+
+- **CI** (`.github/workflows/ci.yml`) — на каждый пуш в `main` и пулл-реквест: генерирует проект, собирает и прогоняет тесты на симуляторе iPhone.
+- **TestFlight** (`.github/workflows/testflight.yml`) — запуск вручную (Actions → TestFlight → Run workflow): архив, подпись и загрузка в TestFlight. Номер сборки — номер запуска.
+
+Для TestFlight один раз нужно:
+
+1. App Store Connect → Users and Access → Integrations → App Store Connect API → Team Keys → создать ключ с ролью **App Manager**, скачать `.p8`.
+2. В репозитории Settings → Secrets and variables → Actions:
+   - секреты `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_PRIVATE_KEY` (всё содержимое `.p8`);
+   - переменная `APPLE_TEAM_ID` (Team ID из developer.apple.com → Membership).
+3. В App Store Connect создать приложение с Bundle ID `com.efirelle.app`.
+
+Общие шаги сборок вынесены в `.github/actions/prepare`.
+
 ## Архитектура
 
 MVVM на `@Observable`. Экран — `View` без логики, состояние и действия — во `ViewModel` (`@MainActor`).

@@ -47,8 +47,9 @@ struct ChatViewModelTests {
     func importantScope() async {
         let model = await loadedModel()
         model.scope = .important
-        #expect(!model.visibleEntries.isEmpty)
-        #expect(model.visibleEntries.allSatisfy(\.isImportant))
+        let visible = model.visibleEntries
+        #expect(visible.count > 0)
+        #expect(visible.allSatisfy { $0.isImportant })
     }
 
     @Test("Голос принимается только один раз")

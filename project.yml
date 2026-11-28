@@ -26,6 +26,10 @@ targets:
     info:
       path: Efirelle/Info.plist
       properties:
+        # Версия и номер сборки — из настроек (MARKETING_VERSION, CURRENT_PROJECT_VERSION);
+        # TestFlight подставляет номер сборки при архивации.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDisplayName: Efirelle
         CFBundleDevelopmentRegion: ru
         UILaunchScreen:

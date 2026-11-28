@@ -2,14 +2,16 @@ import SwiftUI
 
 @main
 struct EfirelleApp: App {
-    /// Единственная точка выбора источника данных. Для API — заменить реализацию здесь.
-    private let repository: any StreamRepository = MockStreamRepository()
+    private let repository: any StreamRepository = APIStreamRepository()
+    @State private var session = Session()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(\.streamRepository, repository)
+                .environment(session)
                 .tint(Palette.accent)
+                .task { await session.restore(using: repository) }
         }
     }
 }

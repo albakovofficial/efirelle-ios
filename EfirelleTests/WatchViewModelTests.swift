@@ -2,46 +2,47 @@ import Testing
 @testable import Efirelle
 
 @MainActor
-@Suite("Экран эфира")
+@Suite("Экран канала")
 struct WatchViewModelTests {
-    private let stream = MockData.streams[0]
+    private let repository = MockStreamRepository.instant
 
-    @Test("Открывается в прямом эфире")
-    func startsAtLiveEdge() {
-        let model = WatchViewModel(stream: stream)
-        #expect(model.isAtLiveEdge)
-        #expect(model.lag == .zero)
+    @Test("Загружает канал, эфир, моменты и чат")
+    func load() async throws {
+        let model = WatchViewModel(channel: MockData.Channels.timur)
+        await model.load(from: repository)
+        let watch = try #require(model.state.value)
+        #expect(watch.stream != nil)
+        #expect(model.viewers == watch.stream?.viewers)
+        #expect(model.markers == watch.markers)
+        #expect(model.chat.entries.count == MockData.chat.count)
+        #expect(model.chat.prediction?.id == MockData.prediction.id)
     }
 
-    @Test("Перемотка назад на 30 секунд")
-    func rewind() {
-        let model = WatchViewModel(stream: stream)
-        model.rewind()
-        #expect(model.lag == WatchViewModel.rewindStep)
-        #expect(!model.isAtLiveEdge)
+    @Test("Канал не в сети открывается без эфира")
+    func offline() async throws {
+        let model = WatchViewModel(channel: MockData.Channels.offline)
+        await model.load(from: repository)
+        #expect(try #require(model.state.value).stream == nil)
     }
 
-    @Test("Перемотка не выходит за границы эфира")
-    func seekIsClamped() {
-        let model = WatchViewModel(stream: stream)
-        model.seek(to: .seconds(-10))
-        #expect(model.position == .zero)
-        model.seek(to: stream.duration + .seconds(60))
-        #expect(model.position == stream.duration)
+    @Test("Число зрителей и моменты приходят событиями")
+    func events() async throws {
+        let model = WatchViewModel(channel: MockData.Channels.timur)
+        await model.load(from: repository)
+        await model.handle(.viewers(77), repository: repository)
+        #expect(model.viewers == 77)
+
+        let moment = Moment(id: "new", kind: .highlight, text: "Финал", channel: MockData.Channels.timur, when: "только что", offset: .seconds(5))
+        await model.handle(.moment(moment), repository: repository)
+        #expect(model.markers.last == moment)
     }
 
-    @Test("Кнопка «К эфиру» возвращает в прямой эфир")
-    func returnToLive() {
-        let model = WatchViewModel(stream: stream)
-        model.seek(to: .seconds(100))
-        model.returnToLive()
-        #expect(model.isAtLiveEdge)
-    }
-
-    @Test("Отметки моментов загружаются из репозитория")
-    func loadsMarkers() async {
-        let model = WatchViewModel(stream: stream)
-        await model.loadMarkers(from: MockStreamRepository.instant)
-        #expect(model.markers.count == MockData.markers[stream.id]?.count)
+    @Test("Отслеживание переключается и берёт число подписчиков с сервера")
+    func follow() async {
+        let model = WatchViewModel(channel: MockData.Channels.timur)
+        await model.load(from: repository)
+        await model.toggleFollow(using: repository)
+        #expect(model.isFollowing)
+        #expect(model.followers == 1)
     }
 }

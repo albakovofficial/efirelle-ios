@@ -7,16 +7,17 @@ struct VideoSurface: View {
     let tone: Tone
     let isPlaying: Bool
     let isMuted: Bool
+    /// Смена значения — перейти к прямому эфиру.
+    var liveRequest = 0
 
     @State private var player: AVPlayer?
 
     var body: some View {
         ZStack {
+            ThumbnailView(tone: tone, cornerRadius: 0)
             if let player {
                 VideoPlayer(player: player)
                     .disabled(true) // управление — своими кнопками под видео
-            } else {
-                ThumbnailView(tone: tone, cornerRadius: 0)
             }
         }
         .task(id: url) {
@@ -24,6 +25,8 @@ struct VideoSurface: View {
                 player = nil
                 return
             }
+            // Звук эфира слышен и при выключенном беззвучном режиме.
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             let player = AVPlayer(url: url)
             player.isMuted = isMuted
             if isPlaying { player.play() }
@@ -38,6 +41,11 @@ struct VideoSurface: View {
         }
         .onChange(of: isMuted) { _, muted in
             player?.isMuted = muted
+        }
+        .onChange(of: liveRequest) {
+            guard let player, let range = player.currentItem?.seekableTimeRanges.last?.timeRangeValue else { return }
+            player.seek(to: range.end)
+            player.play()
         }
         .onDisappear { player?.pause() }
     }

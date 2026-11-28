@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Экран эфира. На iPhone чат идёт под плеером, на iPad и в широком окне — справа.
+/// Экран канала. На iPhone чат идёт под плеером, на iPad и в широком окне — справа.
 struct WatchView: View {
     @Environment(\.streamRepository) private var repository
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -9,24 +9,24 @@ struct WatchView: View {
     private let sideChatWidth: CGFloat = 380
     private let inlineChatHeight: CGFloat = 560
 
-    init(stream: LiveStream) {
-        _model = State(initialValue: WatchViewModel(stream: stream))
+    init(channel: Channel) {
+        _model = State(initialValue: WatchViewModel(channel: channel))
     }
 
     var body: some View {
-        Group {
+        LoadStateView(state: model.state, retry: { await model.load(from: repository) }) { watch in
             if horizontalSizeClass == .regular {
                 HStack(alignment: .top, spacing: Spacing.l) {
-                    ScrollView { mainColumn }
-                    ChatView(streamID: model.stream.id)
+                    ScrollView { mainColumn(watch) }
+                    ChatView(model: model.chat)
                         .frame(width: sideChatWidth)
                 }
                 .padding(Spacing.l)
             } else {
                 ScrollView {
                     VStack(spacing: Spacing.l) {
-                        mainColumn
-                        ChatView(streamID: model.stream.id)
+                        mainColumn(watch)
+                        ChatView(model: model.chat)
                             .frame(height: inlineChatHeight)
                     }
                     .padding(Spacing.m)
@@ -34,25 +34,53 @@ struct WatchView: View {
             }
         }
         .background(Palette.background)
-        .navigationTitle(model.stream.channel.name)
+        .navigationTitle(model.state.value?.channel.name ?? model.channel.name)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await model.loadMarkers(from: repository) }
+        .task { await model.load(from: repository) }
+        .task { await model.listen(to: repository) }
     }
 
-    private var mainColumn: some View {
+    private func mainColumn(_ watch: ChannelWatch) -> some View {
         VStack(spacing: Spacing.l) {
-            PlayerView(model: model)
-            ChannelHeaderView(stream: model.stream, isFollowing: $model.isFollowing)
-            if !model.markers.isEmpty {
-                StreamMomentsView(markers: model.markers, onSeek: model.seek(to:))
+            if let stream = watch.stream {
+                PlayerView(stream: stream, viewers: model.viewers)
+            } else {
+                OfflineStageView(channel: watch.channel)
+            }
+            ChannelHeaderView(model: model, watch: watch)
+            if watch.stream != nil, !model.markers.isEmpty {
+                StreamMomentsView(markers: model.markers)
             }
         }
     }
 }
 
+/// Заставка, пока канал не в эфире. Экран обновится сам, когда эфир начнётся.
+private struct OfflineStageView: View {
+    let channel: Channel
+
+    var body: some View {
+        ThumbnailView(tone: channel.tone, cornerRadius: Radius.l)
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .overlay(alignment: .bottomLeading) {
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    Text("\(channel.name) сейчас не в эфире")
+                        .font(.brandHeadline)
+                        .foregroundStyle(Palette.ink)
+                    Text("Экран обновится сам, когда эфир начнётся")
+                        .font(.brandCaption)
+                        .foregroundStyle(channel.tone.ink)
+                }
+                .padding(Spacing.m)
+            }
+            .padding(Spacing.xs)
+            .background(Palette.surface, in: .rect(cornerRadius: Radius.xl))
+    }
+}
+
 #Preview {
     NavigationStack {
-        WatchView(stream: MockData.streams[0])
+        WatchView(channel: MockData.Channels.timur)
     }
-    .environment(\.streamRepository, MockStreamRepository.instant)
+    .environment(Session())
 }

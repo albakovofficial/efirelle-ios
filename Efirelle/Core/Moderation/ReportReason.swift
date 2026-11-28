@@ -1,22 +1,22 @@
-/// Причина жалобы на сообщение. Уходит модераторам вместе с жалобой.
-enum ReportReason: String, CaseIterable, Identifiable, Sendable {
-    case insult
+/// Причина жалобы на сообщение. Значения совпадают с API (`REPORT_REASONS`).
+enum ReportReason: String, CaseIterable, Identifiable, Sendable, Encodable {
+    case spam
+    case harassment
     case hate
     case sexual
-    case spam
-    case personalData
+    case violence
     case other
 
     var id: Self { self }
 
     var title: String {
         switch self {
-        case .insult: "Оскорбления или травля"
+        case .spam: "Спам или реклама"
+        case .harassment: "Оскорбления, травля"
         case .hate: "Разжигание ненависти"
-        case .sexual: "Откровенный контент"
-        case .spam: "Спам или мошенничество"
-        case .personalData: "Чужие личные данные"
-        case .other: "Другое нарушение"
+        case .sexual: "Сексуальный контент"
+        case .violence: "Насилие или угрозы"
+        case .other: "Другое"
         }
     }
 }

@@ -4,7 +4,7 @@ import SwiftUI
 struct ChatComposer: View {
     @Binding var draft: String
     let canSend: Bool
-    let sparks: Int?
+    let sparks: Int
     let onSend: () -> Void
 
     @FocusState private var isFocused: Bool
@@ -33,10 +33,8 @@ struct ChatComposer: View {
                 .accessibilityLabel("Отправить")
             }
 
-            if let sparks {
-                SparksBalanceView(amount: sparks)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            SparksBalanceView(amount: sparks)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(Spacing.s)
     }

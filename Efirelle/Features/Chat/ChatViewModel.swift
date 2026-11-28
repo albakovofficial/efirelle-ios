@@ -1,9 +1,9 @@
 import Foundation
 import Observation
 
-/// Чат эфира: история, фильтр «Важное», отправка сообщений, прогноз и модерация
-/// (жалобы, блокировка авторов, фильтр слов — требования App Review 1.2).
-/// Сейчас сообщения живут локально; подключение к серверу (WebSocket) добавляется здесь.
+/// Чат эфира: лента в реальном времени, фильтр «Важное», отправка, прогноз и модерация
+/// (жалобы, скрытие авторов, удаление, запрет писать — требования App Review 1.2).
+/// Отправка идёт запросом к API, сообщение возвращается в ленту событием `message` — как у всех.
 @MainActor
 @Observable
 final class ChatViewModel {
@@ -22,129 +22,129 @@ final class ChatViewModel {
     }
 
     static let maxMessageLength = 500
-    /// Награда за верный прогноз. Участие бесплатное — искры не списываются.
-    static let predictionReward = 100
+    static let maxEntries = 200
 
-    let streamID: LiveStream.ID
-    private let moderation: ModerationStore
+    let channelID: Channel.ID
     private(set) var entries: [ChatEntry] = []
-    private(set) var viewer: Viewer?
     private(set) var prediction: Prediction?
     private(set) var predictionTimeLeft: Duration = .zero
-    private(set) var selectedOutcomeID: Prediction.Outcome.ID?
-    private(set) var isUnavailable = false
-    /// Почему сообщение не отправилось (фильтр слов).
-    private(set) var sendError: String?
-    /// Короткое подтверждение действия: жалоба отправлена, автор заблокирован.
+    /// Зритель — автор этого канала: может удалять сообщения и запрещать писать.
+    private(set) var isOwner = false
+    private(set) var isSending = false
+    /// Короткое сообщение под лентой: ошибка отправки или подтверждение действия.
     private(set) var notice: String?
-    private var hiddenMessageIDs: Set<ChatMessage.ID> = []
     var scope: Scope = .all
     var draft = ""
 
-    init(streamID: LiveStream.ID, moderation: ModerationStore = .shared) {
-        self.streamID = streamID
-        self.moderation = moderation
+    init(channelID: Channel.ID) {
+        self.channelID = channelID
     }
 
     var visibleEntries: [ChatEntry] {
-        entries.filter { entry in
-            guard isVisible(entry) else { return false }
-            switch scope {
-            case .all: return true
-            case .important: return entry.isImportant
-            }
+        switch scope {
+        case .all: entries
+        case .important: entries.filter(\.isImportant)
         }
     }
 
     var canSend: Bool {
-        viewer != nil && !trimmedDraft.isEmpty
+        !isSending && !draft.isBlank
     }
 
     var isPredictionOpen: Bool {
-        prediction != nil && predictionTimeLeft > .zero
+        prediction?.status == .open && predictionTimeLeft > .zero
     }
 
-    var blockedAuthors: [String] {
-        moderation.blockedAuthors.sorted()
+    /// Новые данные экрана: история, прогноз, права зрителя.
+    func reset(messages: [ChatMessage], prediction: Prediction?, isOwner: Bool) {
+        entries = messages.map(ChatEntry.message)
+        self.isOwner = isOwner
+        update(prediction)
     }
 
-    func load(from repository: any StreamRepository) async {
+    /// События сервера, которые касаются чата.
+    func apply(_ event: ChatServerEvent) {
+        switch event {
+        case .message(let message):
+            guard !entries.contains(where: { $0.id == message.id }) else { return }
+            entries.append(.message(message))
+            if entries.count > Self.maxEntries {
+                entries.removeFirst(entries.count - Self.maxEntries)
+            }
+        case .deleted(let id):
+            entries.removeAll { $0.id == id }
+        case .prediction(let incoming):
+            update(incoming)
+        case .raid(let target, let targetName):
+            entries.append(.event(ChatEvent(
+                id: UUID().uuidString,
+                tone: .rose,
+                text: "Рейд: эфир продолжается у \(targetName)",
+                channel: target
+            )))
+        case .error(let message):
+            notice = message
+        case .viewers, .live, .moment:
+            break
+        }
+    }
+
+    func send(using repository: any StreamRepository) async {
+        guard canSend else { return }
+        let text = String(draft.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maxMessageLength))
+        isSending = true
+        defer { isSending = false }
         do {
-            async let history = repository.chatHistory(for: streamID)
-            async let activePrediction = repository.activePrediction(for: streamID)
-            async let currentViewer = repository.currentViewer()
-
-            entries = try await history
-            prediction = try await activePrediction
-            predictionTimeLeft = prediction?.timeLeft ?? .zero
-            viewer = try await currentViewer
-            isUnavailable = false
-        } catch is CancellationError {
-            // Экран закрыли во время загрузки.
+            try await repository.sendMessage(text, channel: channelID)
+            draft = ""
+            notice = nil
         } catch {
-            isUnavailable = true
+            notice = error.localizedDescription
         }
     }
 
-    func send() {
-        guard canSend, let viewer else { return }
-        let text = String(trimmedDraft.prefix(Self.maxMessageLength))
-        guard ContentFilter.isAllowed(text) else {
-            sendError = "Сообщение не отправлено: в нём есть слова, запрещённые правилами чата."
-            return
-        }
-        let message = ChatMessage(
-            id: UUID().uuidString,
-            author: viewer.name,
-            tone: viewer.tone,
-            badge: nil,
-            text: text,
-            isOwn: true
+    func report(_ message: ChatMessage, reason: ReportReason, using repository: any StreamRepository) async {
+        await perform(
+            { try await repository.report(message: message.id, reason: reason) },
+            success: "Жалоба отправлена — модераторы рассмотрят её в течение 24 часов"
         )
-        entries.append(.message(message))
-        draft = ""
-        sendError = nil
     }
 
-    func clearSendError() {
-        sendError = nil
+    /// Скрыть все сообщения автора — во всех чатах, на всех устройствах.
+    func hideAuthor(of message: ChatMessage, using repository: any StreamRepository) async {
+        let done = await perform(
+            { try await repository.block(username: message.authorSlug) },
+            success: "Сообщения \(message.author) скрыты. Вернуть можно в Профиле"
+        )
+        if done { removeMessages(by: message.authorId) }
+    }
+
+    func delete(_ message: ChatMessage, using repository: any StreamRepository) async {
+        let done = await perform({ try await repository.deleteMessage(message.id) }, success: "Сообщение удалено")
+        if done { entries.removeAll { $0.id == message.id } }
+    }
+
+    /// Запрет писать в чате канала. `minutes == nil` — навсегда.
+    func ban(_ message: ChatMessage, minutes: Int?, using repository: any StreamRepository) async {
+        let done = await perform(
+            { try await repository.ban(username: message.authorSlug, minutes: minutes) },
+            success: minutes.map { "\(message.author) не сможет писать \($0) минут" } ?? "\(message.author) больше не сможет писать в вашем чате"
+        )
+        if done { removeMessages(by: message.authorId) }
+    }
+
+    /// Голос принимается один раз и только пока прогноз открыт.
+    func vote(for outcomeID: Prediction.Outcome.ID, using repository: any StreamRepository) async {
+        guard isPredictionOpen, let prediction, prediction.myOutcomeId == nil else { return }
+        do {
+            update(try await repository.vote(prediction: prediction.id, outcome: outcomeID))
+        } catch {
+            notice = error.localizedDescription
+        }
     }
 
     func clearNotice() {
         notice = nil
-    }
-
-    /// Жалоба: сообщение сразу скрывается у зрителя, жалоба уходит модераторам.
-    func report(_ message: ChatMessage, reason: ReportReason, to repository: any StreamRepository) async {
-        guard !message.isOwn else { return }
-        hiddenMessageIDs.insert(message.id)
-        do {
-            try await repository.report(messageID: message.id, in: streamID, reason: reason)
-            notice = "Жалоба отправлена модераторам. Сообщение скрыто."
-        } catch {
-            notice = "Жалобу не удалось отправить — напишите на \(AppLinks.supportEmail). Сообщение скрыто."
-        }
-    }
-
-    /// Блокировка автора: его сообщения пропадают во всех чатах на этом устройстве.
-    func block(author: String) {
-        guard author != viewer?.name else { return }
-        moderation.block(author)
-        notice = "Вы больше не увидите сообщения \(author)."
-    }
-
-    func unblock(author: String) {
-        moderation.unblock(author)
-    }
-
-    /// Голос принимается один раз и только пока прогноз открыт.
-    func vote(for outcomeID: Prediction.Outcome.ID) {
-        guard
-            isPredictionOpen,
-            selectedOutcomeID == nil,
-            prediction?.outcomes.contains(where: { $0.id == outcomeID }) == true
-        else { return }
-        selectedOutcomeID = outcomeID
     }
 
     /// Обратный отсчёт прогноза: раз в `interval` убавляет секунду. Останавливается при отмене задачи.
@@ -159,12 +159,37 @@ final class ChatViewModel {
         }
     }
 
-    private func isVisible(_ entry: ChatEntry) -> Bool {
-        guard case .message(let message) = entry else { return true }
-        return !hiddenMessageIDs.contains(message.id) && !moderation.isBlocked(message.author)
+    // MARK: Внутреннее
+
+    /// Рассылка сервера одна на всех и не знает, за что голосовал этот зритель, — свой выбор сохраняем.
+    private func update(_ incoming: Prediction?) {
+        guard var incoming, incoming.status != .cancelled else {
+            prediction = nil
+            predictionTimeLeft = .zero
+            return
+        }
+        if incoming.myOutcomeId == nil, prediction?.id == incoming.id {
+            incoming.myOutcomeId = prediction?.myOutcomeId
+        }
+        prediction = incoming
+        predictionTimeLeft = incoming.status == .open ? .seconds(incoming.endsInSeconds) : .zero
     }
 
-    private var trimmedDraft: String {
-        draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func removeMessages(by authorID: String) {
+        entries.removeAll { entry in
+            if case .message(let message) = entry { message.authorId == authorID } else { false }
+        }
+    }
+
+    @discardableResult
+    private func perform(_ action: () async throws -> Void, success: String) async -> Bool {
+        do {
+            try await action()
+            notice = success
+            return true
+        } catch {
+            notice = error.localizedDescription
+            return false
+        }
     }
 }

@@ -1,4 +1,4 @@
-/// Запись в чате: сообщение участника или событие канала.
+/// Запись в чате: сообщение участника или событие канала (рейд).
 enum ChatEntry: Identifiable, Hashable, Sendable {
     case message(ChatMessage)
     case event(ChatEvent)
@@ -10,7 +10,7 @@ enum ChatEntry: Identifiable, Hashable, Sendable {
         }
     }
 
-    /// «Важное»: события канала, сообщения модераторов и VIP.
+    /// «Важное»: события канала, сообщения автора эфира и модераторов.
     var isImportant: Bool {
         switch self {
         case .event: true
@@ -19,50 +19,56 @@ enum ChatEntry: Identifiable, Hashable, Sendable {
     }
 }
 
-struct ChatMessage: Identifiable, Hashable, Sendable {
+struct ChatMessage: Identifiable, Hashable, Sendable, Decodable {
     let id: String
     let author: String
+    /// Адрес канала автора — для блокировки и запрета писать.
+    let authorSlug: String
+    let authorId: String
     let tone: Tone
     let badge: ChatBadge?
     let text: String
-    /// Сообщение текущего зрителя: на свои нельзя пожаловаться и себя нельзя заблокировать.
-    var isOwn = false
 }
 
+/// Служебное событие — живёт только на экране.
 struct ChatEvent: Identifiable, Hashable, Sendable {
     let id: String
     let tone: Tone
     let text: String
+    /// Канал, куда ушёл рейд.
+    var channel: Channel.ID?
 }
 
-enum ChatBadge: Hashable, Sendable {
+enum ChatBadge: String, Hashable, Sendable, Decodable {
+    case broadcaster
     case moderator
-    case vip
     case newcomer
-    case subscriber(months: Int)
 
-    var isPrivileged: Bool {
-        switch self {
-        case .moderator, .vip: true
-        case .newcomer, .subscriber: false
+    private enum CodingKeys: String, CodingKey { case type }
+
+    init(from decoder: any Decoder) throws {
+        let raw = try decoder.container(keyedBy: CodingKeys.self).decode(String.self, forKey: .type)
+        guard let badge = ChatBadge(rawValue: raw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Неизвестный значок \(raw)"))
         }
+        self = badge
     }
+
+    var isPrivileged: Bool { self != .newcomer }
 
     var title: String {
         switch self {
+        case .broadcaster: "АВТОР"
         case .moderator: "МОД"
-        case .vip: "VIP"
         case .newcomer: "НОВЫЙ"
-        case .subscriber(let months): "\(months) МЕС"
         }
     }
 
     var tone: Tone {
         switch self {
+        case .broadcaster: .rose
         case .moderator: .mint
-        case .vip: .butter
         case .newcomer: .sky
-        case .subscriber: .lavender
         }
     }
 }

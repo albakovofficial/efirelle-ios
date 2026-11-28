@@ -1,49 +1,41 @@
 import SwiftUI
 
-/// Кнопки под видео. Знает о прямом эфире: показывает отставание и кнопку «К эфиру».
+/// Кнопки под видео: пауза, звук, длительность эфира или возврат к прямому эфиру.
 struct PlayerControls: View {
-    let model: WatchViewModel
+    let isPlaying: Bool
+    let isMuted: Bool
+    let isBehindLive: Bool
+    /// Когда начался эфир — для тикающей длительности.
+    let startedAt: Date
+    let onTogglePlay: () -> Void
+    let onToggleMute: () -> Void
+    let onReturnToLive: () -> Void
 
     var body: some View {
         HStack(spacing: Spacing.xs) {
             ControlButton(
-                systemImage: model.isPlaying ? "pause.fill" : "play.fill",
-                label: model.isPlaying ? "Пауза" : "Смотреть",
-                isProminent: true
-            ) {
-                model.isPlaying.toggle()
-            }
-            ControlButton(systemImage: "gobackward.30", label: "Назад на 30 секунд") {
-                model.rewind()
-            }
+                systemImage: isPlaying ? "pause.fill" : "play.fill",
+                label: isPlaying ? "Пауза" : "Смотреть",
+                isProminent: true,
+                action: onTogglePlay
+            )
             ControlButton(
-                systemImage: model.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                label: model.isMuted ? "Включить звук" : "Выключить звук"
-            ) {
-                model.isMuted.toggle()
-            }
+                systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                label: isMuted ? "Включить звук" : "Выключить звук",
+                action: onToggleMute
+            )
 
             Spacer(minLength: 0)
             status
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: model.isPlaying)
+        .sensoryFeedback(.impact(weight: .light), trigger: isPlaying)
     }
 
     @ViewBuilder
     private var status: some View {
-        if model.isAtLiveEdge {
-            Label {
-                Text("Прямой эфир")
-            } icon: {
-                Circle().fill(Palette.live).frame(width: 8, height: 8)
-            }
-            .font(.brandCaption)
-            .foregroundStyle(Palette.ink)
-        } else {
-            Button {
-                model.returnToLive()
-            } label: {
-                Text("−\(Formatters.clock(model.lag)) · К эфиру")
+        if isBehindLive {
+            Button(action: onReturnToLive) {
+                Text("К эфиру")
                     .font(.brandCaption)
                     .foregroundStyle(.white)
                     .padding(.horizontal, Spacing.s)
@@ -51,6 +43,17 @@ struct PlayerControls: View {
                     .background(Palette.accent, in: .capsule)
             }
             .buttonStyle(.plain)
+        } else {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Label {
+                    Text("Прямой эфир · \(Formatters.clock(.seconds(context.date.timeIntervalSince(startedAt))))")
+                        .monospacedDigit()
+                } icon: {
+                    Circle().fill(Palette.live).frame(width: 8, height: 8)
+                }
+                .font(.brandCaption)
+                .foregroundStyle(Palette.ink)
+            }
         }
     }
 }

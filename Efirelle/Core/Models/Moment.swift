@@ -1,6 +1,6 @@
-/// Событие эфира: попадает в ленту «Живые моменты» и на таймлайн плеера.
-struct Moment: Identifiable, Hashable, Sendable {
-    enum Kind: Sendable, Hashable {
+/// Событие эфира: попадает в ленту «Живые моменты» и в список моментов эфира.
+struct Moment: Identifiable, Hashable, Sendable, Decodable {
+    enum Kind: String, Sendable, Hashable, Decodable {
         case raid
         case prediction
         case chatPeak
@@ -12,10 +12,33 @@ struct Moment: Identifiable, Hashable, Sendable {
     let kind: Kind
     let text: String
     let channel: Channel
-    /// Человекочитаемое время: «2 мин назад», «идёт сейчас».
+    /// Человекочитаемое время: «2 мин назад».
     let when: String
-    /// Смещение от начала эфира — для перемотки.
+    /// Смещение от начала эфира.
     let offset: Duration
+
+    init(id: String, kind: Kind, text: String, channel: Channel, when: String, offset: Duration) {
+        self.id = id
+        self.kind = kind
+        self.text = text
+        self.channel = channel
+        self.when = when
+        self.offset = offset
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, text, channel, when, offsetSeconds
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        kind = try container.decode(Kind.self, forKey: .kind)
+        text = try container.decode(String.self, forKey: .text)
+        channel = try container.decode(Channel.self, forKey: .channel)
+        when = try container.decode(String.self, forKey: .when)
+        offset = .seconds(try container.decode(Int.self, forKey: .offsetSeconds))
+    }
 }
 
 extension Moment.Kind {

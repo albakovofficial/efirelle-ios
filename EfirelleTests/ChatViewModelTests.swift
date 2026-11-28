@@ -1,146 +1,110 @@
-import Foundation
 import Testing
 @testable import Efirelle
 
 @MainActor
 @Suite("Чат")
 struct ChatViewModelTests {
-    /// Отдельное хранилище на каждый тест, чтобы блокировки не протекали между тестами.
-    private func freshModeration() -> ModerationStore {
-        ModerationStore(defaults: UserDefaults(suiteName: "tests.\(UUID().uuidString)")!)
-    }
+    private let repository = MockStreamRepository.instant
 
-    private func loadedModel(moderation: ModerationStore? = nil) async -> ChatViewModel {
-        let model = ChatViewModel(streamID: "s-timur", moderation: moderation ?? freshModeration())
-        await model.load(from: MockStreamRepository.instant)
+    private func loadedModel() -> ChatViewModel {
+        let model = ChatViewModel(channelID: MockData.Channels.timur.id)
+        model.reset(messages: MockData.chat, prediction: MockData.prediction, isOwner: false)
         return model
     }
 
-    private func firstForeignMessage(in model: ChatViewModel) throws -> ChatMessage {
-        let messages = model.visibleEntries.compactMap { entry -> ChatMessage? in
-            if case .message(let message) = entry, !message.isOwn { return message }
-            return nil
-        }
-        return try #require(messages.first)
+    private var anyMessage: ChatMessage { MockData.chat[0] }
+
+    @Test("Сообщения от сервера добавляются один раз")
+    func appliesMessages() {
+        let model = loadedModel()
+        let message = ChatMessage(id: "new", author: "Оля", authorSlug: "olya", authorId: "u-olya", tone: .sky, badge: nil, text: "привет")
+        model.apply(.message(message))
+        model.apply(.message(message))
+        #expect(model.entries.count == MockData.chat.count + 1)
     }
 
-    @Test("Загружает историю, прогноз и зрителя")
-    func load() async {
-        let model = await loadedModel()
-        #expect(model.entries.count == MockData.chatHistory.count)
-        #expect(model.prediction != nil)
-        #expect(model.isPredictionOpen)
-        #expect(model.viewer != nil)
+    @Test("Удалённое сообщение пропадает")
+    func appliesDeletion() {
+        let model = loadedModel()
+        model.apply(.deleted(id: anyMessage.id))
+        #expect(!model.entries.contains { $0.id == anyMessage.id })
     }
 
-    @Test("Отправка добавляет сообщение и очищает поле")
-    func send() async {
-        let model = await loadedModel()
-        model.draft = "  привет  "
-        model.send()
-        guard case .message(let message) = model.entries.last else {
-            Issue.record("Последняя запись должна быть сообщением")
-            return
-        }
-        #expect(message.text == "привет")
-        #expect(message.author == MockData.viewer.name)
-        #expect(model.draft.isEmpty)
-    }
-
-    @Test("Пустое сообщение не отправляется")
-    func emptyDraftIsIgnored() async {
-        let model = await loadedModel()
-        let count = model.entries.count
-        model.draft = "   "
-        model.send()
-        #expect(model.entries.count == count)
-        #expect(!model.canSend)
-    }
-
-    @Test("«Важное» показывает только модераторов, VIP и события")
-    func importantScope() async {
-        let model = await loadedModel()
+    @Test("«Важное» показывает только автора эфира, модераторов и события")
+    func importantScope() {
+        let model = loadedModel()
+        model.apply(.raid(target: "mira", targetName: "Мира"))
         model.scope = .important
         let visible = model.visibleEntries
         #expect(visible.count > 0)
-        #expect(visible.allSatisfy { $0.isImportant })
+        #expect(visible.allSatisfy(\.isImportant))
     }
 
-    @Test("Голос принимается только один раз")
-    func votesOnce() async throws {
-        let model = await loadedModel()
-        let outcomes = try #require(model.prediction?.outcomes)
-        model.vote(for: outcomes[0].id)
-        model.vote(for: outcomes[1].id)
-        #expect(model.selectedOutcomeID == outcomes[0].id)
+    @Test("Отправка очищает поле, пустое сообщение не отправляется")
+    func send() async {
+        let model = loadedModel()
+        model.draft = "   "
+        #expect(!model.canSend)
+        model.draft = "  привет  "
+        await model.send(using: repository)
+        #expect(model.draft.isEmpty)
     }
 
-    @Test("Отсчёт закрывает прогноз")
-    func countdownClosesPrediction() async {
-        let model = await loadedModel()
-        await model.runPredictionCountdown(interval: .milliseconds(1))
-        #expect(model.predictionTimeLeft == .zero)
-        #expect(!model.isPredictionOpen)
+    @Test("Ошибка отправки остаётся в поле и показывается")
+    func sendFailure() async {
+        let model = loadedModel()
+        var failing = repository
+        failing.failure = APIError(status: 400, code: "profanity", message: "Сообщение нарушает правила чата")
+        model.draft = "текст"
+        await model.send(using: failing)
+        #expect(model.draft == "текст")
+        #expect(model.notice == "Сообщение нарушает правила чата")
     }
 
-    @Test("Своё сообщение помечено как своё")
-    func ownMessageIsMarked() async {
-        let model = await loadedModel()
-        model.draft = "всем привет"
-        model.send()
-        guard case .message(let message) = model.entries.last else {
-            Issue.record("Последняя запись должна быть сообщением")
-            return
-        }
-        #expect(message.isOwn)
-    }
-
-    @Test("Фильтр не даёт отправить мат и объясняет почему")
-    func filterBlocksProfanity() async {
-        let model = await loadedModel()
-        let count = model.entries.count
-        model.draft = "ну ты и сука"
-        model.send()
-        #expect(model.entries.count == count)
-        #expect(model.sendError != nil)
-        #expect(model.draft == "ну ты и сука")
-    }
-
-    @Test("Жалоба скрывает сообщение и подтверждает отправку")
-    func reportHidesMessage() async throws {
-        let model = await loadedModel()
-        let message = try firstForeignMessage(in: model)
-        await model.report(message, reason: .insult, to: MockStreamRepository.instant)
-        #expect(model.visibleEntries.contains { $0.id == message.id } == false)
+    @Test("Скрытие автора убирает все его сообщения")
+    func hideAuthor() async {
+        let model = loadedModel()
+        await model.hideAuthor(of: anyMessage, using: repository)
+        #expect(!model.entries.contains { entry in
+            if case .message(let message) = entry { message.authorId == anyMessage.authorId } else { false }
+        })
         #expect(model.notice != nil)
     }
 
-    @Test("Блокировка скрывает все сообщения автора и снимается")
-    func blockHidesAuthor() async throws {
-        let moderation = freshModeration()
-        let model = await loadedModel(moderation: moderation)
-        let author = try firstForeignMessage(in: model).author
-        model.block(author: author)
-        let authorVisible = model.visibleEntries.contains { entry in
-            if case .message(let message) = entry { return message.author == author }
-            return false
-        }
-        #expect(authorVisible == false)
-        #expect(model.blockedAuthors == [author])
-
-        model.unblock(author: author)
-        #expect(model.blockedAuthors.isEmpty)
+    @Test("Голос в прогнозе принимается один раз")
+    func vote() async throws {
+        let model = loadedModel()
+        #expect(model.isPredictionOpen)
+        await model.vote(for: "yes", using: repository)
+        #expect(model.prediction?.myOutcomeId == "yes")
+        await model.vote(for: "no", using: repository)
+        #expect(model.prediction?.myOutcomeId == "yes")
     }
 
-    @Test("Блокировка сохраняется между чатами")
-    func blockPersists() async throws {
-        let defaults = try #require(UserDefaults(suiteName: "tests.\(UUID().uuidString)"))
-        let first = await loadedModel(moderation: ModerationStore(defaults: defaults))
-        let author = try firstForeignMessage(in: first).author
-        first.block(author: author)
+    @Test("Рассылка прогноза не сбрасывает свой выбор")
+    func keepsOwnVote() async {
+        let model = loadedModel()
+        await model.vote(for: "yes", using: repository)
+        model.apply(.prediction(MockData.prediction))
+        #expect(model.prediction?.myOutcomeId == "yes")
+    }
 
-        // Новое хранилище поверх тех же настроек — как после перезапуска приложения.
-        let second = await loadedModel(moderation: ModerationStore(defaults: defaults))
-        #expect(second.blockedAuthors == [author])
+    @Test("Отменённый прогноз пропадает")
+    func cancelledPrediction() {
+        let model = loadedModel()
+        let cancelled = Prediction(
+            id: MockData.prediction.id, question: "", status: .cancelled, endsInSeconds: 0,
+            participants: 0, outcomes: [], myOutcomeId: nil, winningOutcomeId: nil
+        )
+        model.apply(.prediction(cancelled))
+        #expect(model.prediction == nil)
+    }
+
+    @Test("Обратный отсчёт закрывает прогноз")
+    func countdown() async {
+        let model = loadedModel()
+        await model.runPredictionCountdown(interval: .zero)
+        #expect(model.predictionTimeLeft == .zero)
+        #expect(!model.isPredictionOpen)
     }
 }

@@ -3,12 +3,13 @@ import SwiftUI
 /// Главная: отслеживаемые, витрина, живые моменты, категории и лента «Для вас».
 struct HomeView: View {
     @Environment(\.streamRepository) private var repository
+    @Environment(Session.self) private var session
     @State private var model = HomeViewModel()
 
     var body: some View {
         NavigationStack {
             LoadStateView(state: model.state, retry: { await model.load(from: repository) }) { content in
-                HomeContentView(content: content, filter: $model.filter, forYou: model.filteredForYou)
+                HomeContentView(feed: content, following: model.followingLive, filter: $model.filter, forYou: model.filteredForYou)
             }
             .background(Palette.background)
             .refreshable { await model.load(from: repository) }
@@ -18,38 +19,46 @@ struct HomeView: View {
                     LogoView(size: 22)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if let viewer = model.state.value?.viewer {
+                    if let viewer = session.viewer {
                         SparksBalanceView(amount: viewer.sparks)
                     }
                 }
             }
-            .watchDestination()
+            .appDestinations()
         }
-        .task { await model.loadIfNeeded(from: repository) }
+        // Вход и выход меняют ленту (отслеживаемые) — перезагружаем.
+        .task(id: session.viewer?.id) { await model.load(from: repository) }
     }
 }
 
 private struct HomeContentView: View {
-    let content: HomeViewModel.Content
+    let feed: HomeFeed
+    let following: [LiveStream]
     @Binding var filter: StreamFilter
     let forYou: [LiveStream]
-
-    /// Эфир по каналу — чтобы карточка момента вела в нужный эфир.
-    private var streamsByChannel: [Channel.ID: LiveStream] {
-        let all = content.following + content.featured + content.forYou
-        return Dictionary(all.map { ($0.channel.id, $0) }, uniquingKeysWith: { first, _ in first })
-    }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Spacing.xxl) {
-                if !content.following.isEmpty {
-                    FollowingStripView(streams: content.following)
+                if !following.isEmpty {
+                    FollowingStripView(streams: following)
                 }
-                featured
-                moments
+                if feed.featured.isEmpty {
+                    ContentUnavailableView(
+                        "Сейчас никто не в эфире",
+                        systemImage: "antenna.radiowaves.left.and.right",
+                        description: Text("Станьте первым: адрес сервера и ключ для OBS — в Профиле → Студия.")
+                    )
+                } else {
+                    featured
+                }
+                if !feed.moments.isEmpty {
+                    moments
+                }
                 categories
-                forYouSection
+                if !feed.forYou.isEmpty {
+                    forYouSection
+                }
             }
             .padding(.horizontal, Spacing.m)
             .padding(.vertical, Spacing.s)
@@ -58,13 +67,13 @@ private struct HomeContentView: View {
 
     @ViewBuilder
     private var featured: some View {
-        if let main = content.featured.first {
+        if let main = feed.featured.first {
             VStack(spacing: Spacing.xs) {
-                NavigationLink(value: main) {
+                NavigationLink(value: main.channel) {
                     FeaturedStreamCard(stream: main)
                 }
-                ForEach(content.featured.dropFirst()) { stream in
-                    NavigationLink(value: stream) {
+                ForEach(feed.featured.dropFirst()) { stream in
+                    NavigationLink(value: stream.channel) {
                         StreamRowView(stream: stream)
                     }
                 }
@@ -78,13 +87,9 @@ private struct HomeContentView: View {
             SectionHeader(title: "Живые моменты", subtitle: "Подключайтесь в самый разгар")
             ScrollView(.horizontal) {
                 HStack(spacing: Spacing.s) {
-                    ForEach(content.moments) { moment in
-                        if let stream = streamsByChannel[moment.channel.id] {
-                            NavigationLink(value: stream) { MomentCardView(moment: moment) }
-                                .buttonStyle(.plain)
-                        } else {
-                            MomentCardView(moment: moment)
-                        }
+                    ForEach(feed.moments) { moment in
+                        NavigationLink(value: moment.channel) { MomentCardView(moment: moment) }
+                            .buttonStyle(.plain)
                     }
                 }
             }
@@ -97,8 +102,9 @@ private struct HomeContentView: View {
             SectionHeader(title: "Категории")
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: Spacing.s) {
-                    ForEach(content.categories) { category in
-                        CategoryCardView(category: category)
+                    ForEach(feed.categories) { category in
+                        NavigationLink(value: category) { CategoryCardView(category: category) }
+                            .buttonStyle(.plain)
                     }
                 }
             }
@@ -120,7 +126,7 @@ private struct HomeContentView: View {
                 ContentUnavailableView("Таких эфиров сейчас нет", systemImage: "antenna.radiowaves.left.and.right.slash")
             } else {
                 ForEach(forYou) { stream in
-                    NavigationLink(value: stream) {
+                    NavigationLink(value: stream.channel) {
                         StreamCardView(stream: stream)
                     }
                     .buttonStyle(.plain)
@@ -132,5 +138,5 @@ private struct HomeContentView: View {
 
 #Preview {
     HomeView()
-        .environment(\.streamRepository, MockStreamRepository.instant)
+        .environment(Session())
 }

@@ -14,7 +14,7 @@ struct FollowingStripView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: Spacing.m) {
                     ForEach(streams) { stream in
-                        NavigationLink(value: stream) {
+                        NavigationLink(value: stream.channel) {
                             VStack(spacing: 6) {
                                 AvatarView(channel: stream.channel, size: .extraLarge, ring: .live)
                                 Text(stream.channel.name.split(separator: " ").first.map(String.init) ?? stream.channel.name)

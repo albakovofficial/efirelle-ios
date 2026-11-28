@@ -1,11 +1,21 @@
 import SwiftUI
 
-/// Одна запись чата: сообщение участника или событие канала (рейд, донат).
-/// На чужое сообщение долгим нажатием можно пожаловаться или заблокировать автора.
+/// Одна запись чата: сообщение участника или событие канала (рейд).
+/// Долгое нажатие на чужое сообщение — жалоба, скрытие автора, а для автора эфира — удаление и запрет писать.
 struct ChatEntryRow: View {
+    /// Что зритель может сделать с сообщением. `nil` — ничего (своё сообщение или гость).
+    struct Actions {
+        let canDelete: Bool
+        let canBan: Bool
+        let report: (ReportReason) -> Void
+        let hideAuthor: () -> Void
+        let delete: () -> Void
+        /// Минуты запрета; `nil` — навсегда.
+        let ban: (Int?) -> Void
+    }
+
     let entry: ChatEntry
-    var onReport: (ChatMessage, ReportReason) -> Void = { _, _ in }
-    var onBlock: (ChatMessage) -> Void = { _ in }
+    var actions: Actions?
 
     var body: some View {
         switch entry {
@@ -22,34 +32,53 @@ struct ChatEntryRow: View {
             .contentShape(.rect)
             .accessibilityElement(children: .combine)
             .contextMenu {
-                if !message.isOwn {
-                    moderationActions(for: message)
+                if let actions {
+                    menu(for: message, actions: actions)
                 }
             }
 
         case .event(let event):
-            Text(event.text)
-                .font(.brandCallout)
-                .foregroundStyle(event.tone.ink)
-                .padding(Spacing.s)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(event.tone.surface, in: .rect(cornerRadius: Radius.m))
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text(event.text)
+                    .font(.brandCallout)
+                    .foregroundStyle(event.tone.ink)
+                if let target = event.channel {
+                    NavigationLink("Перейти", value: Channel(id: target, name: target, initials: "", tone: event.tone, followers: 0))
+                        .font(.brandCallout)
+                }
+            }
+            .padding(Spacing.s)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(event.tone.surface, in: .rect(cornerRadius: Radius.m))
         }
     }
 
     @ViewBuilder
-    private func moderationActions(for message: ChatMessage) -> some View {
+    private func menu(for message: ChatMessage, actions: Actions) -> some View {
         Menu {
             ForEach(ReportReason.allCases) { reason in
-                Button(reason.title) { onReport(message, reason) }
+                Button(reason.title) { actions.report(reason) }
             }
         } label: {
             Label("Пожаловаться", systemImage: "flag")
         }
-        Button(role: .destructive) {
-            onBlock(message)
+        Button {
+            actions.hideAuthor()
         } label: {
-            Label("Заблокировать \(message.author)", systemImage: "hand.raised")
+            Label("Скрыть все сообщения \(message.author)", systemImage: "eye.slash")
+        }
+        if actions.canDelete {
+            Button(role: .destructive, action: actions.delete) {
+                Label("Удалить сообщение", systemImage: "trash")
+            }
+        }
+        if actions.canBan {
+            Button(role: .destructive) { actions.ban(10) } label: {
+                Label("Запретить писать на 10 минут", systemImage: "timer")
+            }
+            Button(role: .destructive) { actions.ban(nil) } label: {
+                Label("Запретить писать навсегда", systemImage: "hand.raised")
+            }
         }
     }
 }

@@ -37,6 +37,6 @@ struct StreamCardView: View {
 }
 
 #Preview {
-    StreamCardView(stream: MockData.streams[6])
+    StreamCardView(stream: MockData.streams[4])
         .padding()
 }

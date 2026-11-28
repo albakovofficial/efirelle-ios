@@ -2,82 +2,70 @@ import SwiftUI
 
 /// Панель чата эфира.
 struct ChatView: View {
-    @Environment(\.streamRepository) private var repository
-    @State private var model: ChatViewModel
-    /// Правила чата принимаются один раз перед первым сообщением.
-    @AppStorage("chat.rulesAccepted") private var rulesAccepted = false
-    @State private var showsRules = false
+    let model: ChatViewModel
 
-    init(streamID: LiveStream.ID) {
-        _model = State(initialValue: ChatViewModel(streamID: streamID))
-    }
+    @Environment(\.streamRepository) private var repository
+    @Environment(Session.self) private var session
+    @State private var showsSignIn = false
 
     var body: some View {
+        @Bindable var bindable = model
         VStack(spacing: 0) {
             header
             Divider()
-            if model.isUnavailable {
-                ContentUnavailableView("Чат недоступен", systemImage: "bubble.left.and.exclamationmark.bubble.right")
-            } else {
-                messages
-            }
-            if let text = model.sendError ?? model.notice {
-                banner(text, isError: model.sendError != nil)
+            messages
+            if let notice = model.notice {
+                Text(notice)
+                    .font(.brandCaption)
+                    .foregroundStyle(Palette.inkSoft)
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.vertical, Spacing.xs)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Palette.background)
+                    .accessibilityAddTraits(.updatesFrequently)
             }
             Divider()
-            ChatComposer(
-                draft: $model.draft,
-                canSend: model.canSend,
-                sparks: model.viewer?.sparks,
-                onSend: send
-            )
+            if let viewer = session.viewer {
+                ChatComposer(
+                    draft: $bindable.draft,
+                    canSend: model.canSend,
+                    sparks: viewer.sparks,
+                    onSend: { Task { await model.send(using: repository) } }
+                )
+            } else {
+                Button {
+                    showsSignIn = true
+                } label: {
+                    Text("Войдите, чтобы писать в чат и участвовать в прогнозах")
+                        .font(.brandCallout)
+                        .frame(maxWidth: .infinity, minHeight: TapTarget.minimum)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(Spacing.s)
+            }
         }
         .background(Palette.surface, in: .rect(cornerRadius: Radius.xl))
-        .task { await model.load(from: repository) }
         .task(id: model.prediction?.id) { await model.runPredictionCountdown() }
         .task(id: model.notice) {
             guard model.notice != nil else { return }
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: .seconds(5))
             model.clearNotice()
         }
-        .onChange(of: model.draft) { model.clearSendError() }
-        .sheet(isPresented: $showsRules) {
-            ChatRulesView(
-                isAccepted: rulesAccepted,
-                blockedAuthors: model.blockedAuthors,
-                onAccept: {
-                    rulesAccepted = true
-                    showsRules = false
-                    model.send()
-                },
-                onUnblock: model.unblock(author:)
-            )
+        // Верный прогноз начисляет искры — обновляем баланс.
+        .onChange(of: model.prediction?.status) { _, status in
+            if status == .resolved { Task { await session.refresh(using: repository) } }
         }
-    }
-
-    /// Первое сообщение — только после принятия правил.
-    private func send() {
-        if rulesAccepted {
-            model.send()
-        } else {
-            showsRules = true
-        }
+        .signInSheet(isPresented: $showsSignIn)
     }
 
     private var header: some View {
-        HStack {
+        @Bindable var bindable = model
+        return HStack {
             Text("Чат")
                 .font(.brandHeadline)
                 .accessibilityAddTraits(.isHeader)
-            Button {
-                showsRules = true
-            } label: {
-                Image(systemName: "info.circle")
-                    .frame(width: TapTarget.minimum, height: TapTarget.minimum)
-            }
-            .accessibilityLabel("Правила чата и поддержка")
             Spacer()
-            Picker("Показывать", selection: $model.scope) {
+            Picker("Показывать", selection: $bindable.scope) {
                 ForEach(ChatViewModel.Scope.allCases) { scope in
                     Text(scope.title).tag(scope)
                 }
@@ -85,19 +73,8 @@ struct ChatView: View {
             .pickerStyle(.segmented)
             .fixedSize()
         }
-        .padding(.leading, Spacing.m)
-        .padding([.vertical, .trailing], Spacing.s)
-    }
-
-    private func banner(_ text: String, isError: Bool) -> some View {
-        Text(text)
-            .font(.brandCaption)
-            .foregroundStyle(isError ? Palette.live : Palette.inkSoft)
-            .padding(.horizontal, Spacing.m)
-            .padding(.vertical, Spacing.xs)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.background)
-            .accessibilityAddTraits(.updatesFrequently)
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
     }
 
     private var messages: some View {
@@ -108,20 +85,20 @@ struct ChatView: View {
                         PredictionCardView(
                             prediction: prediction,
                             timeLeft: model.predictionTimeLeft,
-                            selectedOutcomeID: model.selectedOutcomeID,
                             isOpen: model.isPredictionOpen,
-                            onVote: model.vote(for:)
+                            canVote: session.viewer != nil && !model.isOwner,
+                            onVote: { outcome in Task { await model.vote(for: outcome, using: repository) } }
                         )
                     }
+                    if model.visibleEntries.isEmpty {
+                        Text("Сообщений пока нет — напишите первым")
+                            .font(.brandCaption)
+                            .foregroundStyle(Palette.muted)
+                            .frame(maxWidth: .infinity)
+                    }
                     ForEach(model.visibleEntries) { entry in
-                        ChatEntryRow(
-                            entry: entry,
-                            onReport: { message, reason in
-                                Task { await model.report(message, reason: reason, to: repository) }
-                            },
-                            onBlock: { message in model.block(author: message.author) }
-                        )
-                        .id(entry.id)
+                        ChatEntryRow(entry: entry, actions: actions(for: entry))
+                            .id(entry.id)
                     }
                 }
                 .padding(Spacing.m)
@@ -134,12 +111,29 @@ struct ChatView: View {
             }
         }
     }
+
+    /// Действия доступны вошедшему зрителю и только с чужими сообщениями.
+    private func actions(for entry: ChatEntry) -> ChatEntryRow.Actions? {
+        guard
+            let viewer = session.viewer,
+            case .message(let message) = entry,
+            message.authorId != viewer.id
+        else { return nil }
+        return ChatEntryRow.Actions(
+            canDelete: model.isOwner || viewer.role == .admin,
+            canBan: model.isOwner,
+            report: { reason in Task { await model.report(message, reason: reason, using: repository) } },
+            hideAuthor: { Task { await model.hideAuthor(of: message, using: repository) } },
+            delete: { Task { await model.delete(message, using: repository) } },
+            ban: { minutes in Task { await model.ban(message, minutes: minutes, using: repository) } }
+        )
+    }
 }
 
 #Preview {
-    ChatView(streamID: "s-timur")
+    ChatView(model: ChatViewModel(channelID: "timur"))
         .frame(height: 600)
         .padding()
         .background(Palette.background)
-        .environment(\.streamRepository, MockStreamRepository.instant)
+        .environment(Session())
 }

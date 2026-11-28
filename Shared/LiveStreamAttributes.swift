@@ -1,4 +1,5 @@
 import ActivityKit
+import Foundation
 
 /// Live Activity «канал в эфире» — общая часть приложения и расширения.
 /// Сервер запускает и обновляет её пушем; имена полей совпадают с payloads.ts в API.

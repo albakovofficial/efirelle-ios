@@ -17,14 +17,14 @@ final class SearchViewModel {
 
     func load(from repository: any StreamRepository) async {
         if categories.value == nil { categories = .loading }
+        // Эфиры и категории грузятся параллельно; категории решают, удалась ли загрузка экрана.
         async let page = try? repository.recommendedStreams(offset: 0, limit: Self.featuredCount)
-        async let list = LoadState<[StreamCategory]>.result(of: { try await repository.categories() })
+        if let list = await LoadState<[StreamCategory]>.result(of: { try await repository.categories() }) {
+            categories = list
+        }
         if let page = await page {
             live = page.streams
             liveTotal = page.total
-        }
-        if let list = await list {
-            categories = list
         }
     }
 

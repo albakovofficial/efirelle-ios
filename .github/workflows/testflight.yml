@@ -6,6 +6,9 @@ name: TestFlight
 #   APP_STORE_CONNECT_ISSUER_ID    — Issuer ID
 #   APP_STORE_CONNECT_PRIVATE_KEY  — содержимое файла AuthKey_XXXX.p8 целиком
 # и переменная APPLE_TEAM_ID (Settings → Secrets and variables → Actions → Variables).
+#
+# Версия — MARKETING_VERSION из project.yml (1.0). Номер сборки идёт по порядку: 1, 2, 3, 4…
+# Он берётся из App Store Connect (последняя загруженная сборка + 1), поэтому неудачные запуски номер не тратят.
 on:
   workflow_dispatch:
 
@@ -43,6 +46,14 @@ jobs:
             echo "EXPORT_PATH=$RUNNER_TEMP/export"
           } >> "$GITHUB_ENV"
 
+      - name: Next build number
+        env:
+          BUNDLE_ID: com.efirelle.app
+        run: |
+          BUILD_NUMBER=$(ruby scripts/next-build-number.rb)
+          echo "Сборка $BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+
       - name: Archive
         run: |
           set -o pipefail
@@ -58,7 +69,7 @@ jobs:
             -authenticationKeyIssuerID "$ISSUER_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
-            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: Upload to TestFlight
         run: |

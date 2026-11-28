@@ -53,6 +53,20 @@ struct StudioView: View {
                     LabeledContent("Зрители", value: Formatters.number(stream.viewers))
                 }
                 NavigationLink("Открыть мой канал", value: studio.channel)
+                NavigationLink {
+                    StatsView()
+                } label: {
+                    Label("Статистика", systemImage: "chart.line.uptrend.xyaxis")
+                }
+                NavigationLink {
+                    ModerationView(settings: studio.moderation)
+                } label: {
+                    LabeledContent {
+                        Text(studio.moderation.rules.hint ?? (studio.moderation.blockedWords.isEmpty ? "Выключена" : "Фильтр слов"))
+                    } label: {
+                        Label("Модерация чата", systemImage: "checkmark.shield")
+                    }
+                }
             }
 
             Section {

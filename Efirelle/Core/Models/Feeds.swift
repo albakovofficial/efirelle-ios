@@ -42,6 +42,7 @@ struct ChannelWatch: Hashable, Sendable, Decodable {
     let schedule: [ScheduledStream]
     let recordings: [Recording]
     let clips: [Clip]
+    let chatRules: ChatRules
 }
 
 struct FollowState: Hashable, Sendable, Decodable {
@@ -82,6 +83,7 @@ struct Studio: Hashable, Sendable, Decodable {
     let about: ChannelAbout
     let emotes: [Emote]
     let schedule: [ScheduledStream]
+    var moderation: ModerationSettings
 }
 
 /// Оформление канала: описание, ссылки, баннер.

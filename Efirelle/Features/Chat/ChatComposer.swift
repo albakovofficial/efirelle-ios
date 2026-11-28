@@ -7,6 +7,8 @@ struct ChatComposer: View {
     let canSend: Bool
     let sparks: Int
     var replyTarget: ChatMessage?
+    /// Правила чата для зрителя, например «Медленный режим 10 с».
+    var hint: String?
     var emotes: [Emote] = []
     var emoteImages: [String: UIImage] = [:]
     var onCancelReply: () -> Void = {}
@@ -37,7 +39,7 @@ struct ChatComposer: View {
             }
 
             HStack(spacing: Spacing.xs) {
-                TextField(replyTarget.map { "Ответить \($0.author)" } ?? "Сообщение в чат", text: $draft)
+                TextField(replyTarget.map { "Ответить \($0.author)" } ?? hint ?? "Сообщение в чат", text: $draft)
                     .font(.brandBody)
                     .focused($isFocused)
                     .submitLabel(.send)

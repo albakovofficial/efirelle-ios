@@ -79,14 +79,15 @@ enum MockData {
                 emotes: [],
                 schedule: schedule,
                 recordings: [],
-                clips: []
+                clips: [],
+                chatRules: .none
             )
         }
         guard channel == Channels.offline.id else { return nil }
         return ChannelWatch(
             channel: Channels.offline, stream: nil, isFollowing: true, isOwner: false, markers: [], prediction: nil, chat: [],
             about: ChannelAbout(description: "", links: [], bannerUrl: nil), emotes: [], schedule: schedule,
-            recordings: [], clips: []
+            recordings: [], clips: [], chatRules: .none
         )
     }
 
@@ -115,7 +116,26 @@ enum MockData {
         bans: [],
         about: about,
         emotes: [],
-        schedule: schedule
+        schedule: schedule,
+        moderation: ModerationSettings(slowModeSeconds: 10, followersOnly: false, blockedWords: ["казино"], hiddenThisStream: 3)
+    )
+
+    static let stats = ChannelStats(
+        summary: .init(
+            followers: 1_248,
+            newFollowers: .init(week: 37, previousWeek: 28),
+            avgViewers: .init(week: 42, previousWeek: 36),
+            peak: .init(viewers: 96, at: "2026-11-27T18:00:00.000Z"),
+            hoursLive: .init(week: 11.5, previousWeek: 9)
+        ),
+        streams: [
+            .init(id: "s1", title: "Акустика по заявкам", category: "Музыка", startedAt: "2026-11-27T18:00:00.000Z",
+                  durationSeconds: 8_040, peakViewers: 96, avgViewers: 61, newFollowers: 9,
+                  points: [12, 20, 26, 40, 38, 55, 61, 72, 80, 96, 90, 84]),
+            .init(id: "s2", title: "Разбор новых песен", category: "Музыка", startedAt: "2026-11-26T17:30:00.000Z",
+                  durationSeconds: 6_000, peakViewers: 61, avgViewers: 40, newFollowers: 5,
+                  points: [10, 18, 22, 30, 41, 38, 52, 61, 50, 44]),
+        ]
     )
 
     static let about = ChannelAbout(

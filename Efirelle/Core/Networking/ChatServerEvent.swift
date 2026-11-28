@@ -9,10 +9,12 @@ enum ChatServerEvent: Sendable, Equatable, Decodable {
     case prediction(Prediction)
     case moment(Moment)
     case raid(target: String, targetName: String)
+    /// Автор поменял правила чата.
+    case rules(ChatRules)
     case error(String)
 
     private enum CodingKeys: String, CodingKey {
-        case type, message, id, count, live, prediction, moment, target, targetName
+        case type, message, id, count, live, prediction, moment, target, targetName, rules
     }
 
     init(from decoder: any Decoder) throws {
@@ -29,6 +31,7 @@ enum ChatServerEvent: Sendable, Equatable, Decodable {
                 target: try container.decode(String.self, forKey: .target),
                 targetName: try container.decode(String.self, forKey: .targetName)
             )
+        case "rules": self = .rules(try container.decode(ChatRules.self, forKey: .rules))
         case "error": self = .error(try container.decode(String.self, forKey: .message))
         case let other:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "Неизвестное событие \(other)")

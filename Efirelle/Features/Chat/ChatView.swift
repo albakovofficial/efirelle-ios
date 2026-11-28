@@ -26,11 +26,19 @@ struct ChatView: View {
             }
             Divider()
             if let viewer = session.viewer {
+                if model.isOwner {
+                    ChatShieldBar(rules: model.rules) { patch in
+                        Task { await model.updateRules(patch, using: repository) }
+                    }
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.top, Spacing.xs)
+                }
                 ChatComposer(
                     draft: $bindable.draft,
                     canSend: model.canSend,
                     sparks: viewer.sparks,
                     replyTarget: model.replyTarget,
+                    hint: model.isOwner ? nil : model.rules.hint,
                     emotes: model.emotes,
                     emoteImages: model.emoteImages,
                     onCancelReply: { model.replyTarget = nil },

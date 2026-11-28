@@ -26,6 +26,11 @@ struct MockStreamRepository: StreamRepository {
         return try await respond(CategoryStreams(category: category, streams: MockData.streams.filter { $0.categoryID == id }))
     }
 
+    func recommendedStreams(offset: Int, limit: Int) async throws -> RecommendedStreams {
+        let page = Array(MockData.streams.dropFirst(offset).prefix(limit))
+        return try await respond(RecommendedStreams(streams: page, total: MockData.streams.count))
+    }
+
     func search(_ query: String) async throws -> SearchResults {
         let needle = query.lowercased()
         let streams = MockData.streams.filter { $0.title.lowercased().contains(needle) || $0.channel.name.lowercased().contains(needle) }
@@ -95,6 +100,14 @@ struct MockStreamRepository: StreamRepository {
     func cancelPrediction(_ prediction: Prediction.ID) async throws { try await respond(()) }
     func addMoment(_ text: String) async throws { try await respond(()) }
     func ban(username: String, minutes: Int?) async throws { try await respond(()) }
+    func updateModeration(_ patch: ModerationPatch) async throws -> ModerationSettings {
+        var settings = MockData.studio.moderation
+        settings.slowModeSeconds = patch.slowModeSeconds ?? settings.slowModeSeconds
+        settings.followersOnly = patch.followersOnly ?? settings.followersOnly
+        settings.blockedWords = patch.blockedWords ?? settings.blockedWords
+        return try await respond(settings)
+    }
+    func channelStats() async throws -> ChannelStats { try await respond(MockData.stats) }
     func unban(username: String) async throws { try await respond(()) }
     func raid(target: String) async throws -> Int { try await respond(42) }
     func uploadAvatar(_ jpeg: Data) async throws -> URL? { try await respond(nil) }

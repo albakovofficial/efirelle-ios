@@ -21,6 +21,8 @@ protocol StreamRepository: Sendable {
     func categories() async throws -> [StreamCategory]
     func category(id: StreamCategory.ID) async throws -> CategoryStreams
     func search(_ query: String) async throws -> SearchResults
+    /// «Сейчас в эфире» в порядке рекомендаций для зрителя, страницами.
+    func recommendedStreams(offset: Int, limit: Int) async throws -> RecommendedStreams
     func followedChannels() async throws -> [ChannelStatus]
 
     // MARK: Канал и чат
@@ -76,6 +78,9 @@ protocol StreamRepository: Sendable {
     /// `minutes == nil` — навсегда.
     func ban(username: String, minutes: Int?) async throws
     func unban(username: String) async throws
+    /// Меняет только переданные настройки модерации чата.
+    func updateModeration(_ patch: ModerationPatch) async throws -> ModerationSettings
+    func channelStats() async throws -> ChannelStats
     /// Возвращает, сколько зрителей ушло в рейд.
     func raid(target: String) async throws -> Int
     /// Картинки уходят в JPEG (см. `ImageUpload`). Возвращают новый адрес картинки.

@@ -31,6 +31,8 @@ final class ChatViewModel {
     private(set) var predictionTimeLeft: Duration = .zero
     /// Зритель — автор этого канала: может удалять сообщения и запрещать писать.
     private(set) var isOwner = false
+    /// Медленный режим и «только подписчики» — подсказка в поле ввода; автор меняет их щитом.
+    private(set) var rules: ChatRules = .none
     private(set) var isSending = false
     /// Короткое сообщение под лентой: ошибка отправки или подтверждение действия.
     private(set) var notice: String?
@@ -62,10 +64,11 @@ final class ChatViewModel {
     }
 
     /// Новые данные экрана: история, прогноз, права зрителя.
-    func reset(messages: [ChatMessage], prediction: Prediction?, isOwner: Bool, emotes: [Emote] = []) {
+    func reset(messages: [ChatMessage], prediction: Prediction?, isOwner: Bool, emotes: [Emote] = [], rules: ChatRules = .none) {
         entries = messages.map(ChatEntry.message)
         self.emotes = emotes
         self.isOwner = isOwner
+        self.rules = rules
         update(prediction)
     }
 
@@ -89,6 +92,8 @@ final class ChatViewModel {
                 text: "Рейд: эфир продолжается у \(targetName)",
                 channel: target
             )))
+        case .rules(let rules):
+            self.rules = rules
         case .error(let message):
             notice = message
         case .viewers, .live, .moment:
@@ -106,6 +111,15 @@ final class ChatViewModel {
             draft = ""
             replyTarget = nil
             notice = nil
+        } catch {
+            notice = error.localizedDescription
+        }
+    }
+
+    /// Щит автора: медленный режим и «только подписчики» прямо из чата во время эфира.
+    func updateRules(_ patch: ModerationPatch, using repository: any StreamRepository) async {
+        do {
+            rules = try await repository.updateModeration(patch).rules
         } catch {
             notice = error.localizedDescription
         }

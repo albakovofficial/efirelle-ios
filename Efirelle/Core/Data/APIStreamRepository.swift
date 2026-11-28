@@ -82,6 +82,13 @@ struct APIStreamRepository: StreamRepository {
         try await client.get("/api/search", query: [URLQueryItem(name: "q", value: query)])
     }
 
+    func recommendedStreams(offset: Int, limit: Int) async throws -> RecommendedStreams {
+        try await client.get("/api/streams/recommended", query: [
+            URLQueryItem(name: "offset", value: String(offset)),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ])
+    }
+
     func followedChannels() async throws -> [ChannelStatus] {
         let result: ChannelsResult = try await client.get("/api/me/following")
         return result.channels
@@ -224,6 +231,14 @@ struct APIStreamRepository: StreamRepository {
 
     func ban(username: String, minutes: Int?) async throws {
         try await client.perform("POST", "/api/studio/bans", body: NullableBan(username: username, minutes: minutes))
+    }
+
+    func updateModeration(_ patch: ModerationPatch) async throws -> ModerationSettings {
+        try await client.send("PATCH", "/api/studio/moderation", body: patch)
+    }
+
+    func channelStats() async throws -> ChannelStats {
+        try await client.get("/api/studio/stats")
     }
 
     func unban(username: String) async throws {

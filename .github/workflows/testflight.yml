@@ -78,6 +78,8 @@ jobs:
           echo "Сборка $BUILD_NUMBER"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
+      # Архив без подписи: автоматическая подпись при архивации — «для разработки» и требует
+      # зарегистрированный iPhone. Подписывает для App Store шаг выгрузки (облачная подпись Apple).
       - name: Archive
         if: steps.secrets.outputs.ready == 'true'
         run: |
@@ -88,14 +90,19 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$ARCHIVE_PATH" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$KEY_ID" \
-            -authenticationKeyIssuerID "$ISSUER_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
+            CODE_SIGNING_ALLOWED=NO \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
+
+      # Без подписи в приложении нет разрешений (push). Временная подпись «-» вшивает их,
+      # а выгрузка переподписывает приложение, сохраняя разрешения.
+      - name: Embed entitlements
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          sed 's/$(APS_ENVIRONMENT)/production/' Efirelle/Efirelle.entitlements > "$RUNNER_TEMP/Release.entitlements"
+          codesign --force --sign - --entitlements "$RUNNER_TEMP/Release.entitlements" \
+            "$ARCHIVE_PATH/Products/Applications/Efirelle.app"
+          codesign -d --entitlements - "$ARCHIVE_PATH/Products/Applications/Efirelle.app"
 
       - name: Upload to TestFlight
         if: steps.secrets.outputs.ready == 'true'

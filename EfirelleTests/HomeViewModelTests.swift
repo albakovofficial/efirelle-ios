@@ -20,7 +20,8 @@ struct HomeViewModelTests {
         let model = HomeViewModel()
         await model.load(from: MockStreamRepository.instant)
         model.filter = filter
-        #expect(model.filteredForYou.allSatisfy(filter.includes))
+        let matches = model.filteredForYou.allSatisfy(filter.includes)
+        #expect(matches)
     }
 
     @Test("Ошибка загрузки переводит экран в состояние ошибки")

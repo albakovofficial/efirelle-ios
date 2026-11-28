@@ -27,7 +27,8 @@ struct ChatViewModelTests {
     func appliesDeletion() {
         let model = loadedModel()
         model.apply(.deleted(id: anyMessage.id))
-        #expect(!model.entries.contains { $0.id == anyMessage.id })
+        let isStillThere = model.entries.contains { $0.id == anyMessage.id }
+        #expect(isStillThere == false)
     }
 
     @Test("«Важное» показывает только автора эфира, модераторов и события")
@@ -36,8 +37,9 @@ struct ChatViewModelTests {
         model.apply(.raid(target: "mira", targetName: "Мира"))
         model.scope = .important
         let visible = model.visibleEntries
+        let allImportant = visible.allSatisfy(\.isImportant)
         #expect(visible.count > 0)
-        #expect(visible.allSatisfy(\.isImportant))
+        #expect(allImportant)
     }
 
     @Test("Отправка очищает поле, пустое сообщение не отправляется")
@@ -65,9 +67,11 @@ struct ChatViewModelTests {
     func hideAuthor() async {
         let model = loadedModel()
         await model.hideAuthor(of: anyMessage, using: repository)
-        #expect(!model.entries.contains { entry in
-            if case .message(let message) = entry { message.authorId == anyMessage.authorId } else { false }
-        })
+        let authorID = anyMessage.authorId
+        let remaining = model.entries.filter { entry in
+            if case .message(let message) = entry { message.authorId == authorID } else { false }
+        }
+        #expect(remaining.count == 0)
         #expect(model.notice != nil)
     }
 

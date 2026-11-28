@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Push-уведомления. При выгрузке в App Store Connect Xcode сам меняет на production. -->
+	<!-- Push-уведомления: development для отладки, production для TestFlight и App Store (APS_ENVIRONMENT в project.yml). -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>$(APS_ENVIRONMENT)</string>
 </dict>
 </plist>

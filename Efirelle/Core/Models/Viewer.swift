@@ -1,3 +1,5 @@
+import Foundation
+
 /// Вошедший пользователь.
 struct Viewer: Identifiable, Hashable, Sendable, Decodable {
     enum Role: String, Sendable, Hashable, Decodable {
@@ -14,6 +16,7 @@ struct Viewer: Identifiable, Hashable, Sendable, Decodable {
     let tone: Tone
     /// Баланс искр — внутренних баллов за верные прогнозы. Не покупаются и не выводятся.
     let sparks: Int
+    let avatarUrl: URL?
 }
 
 /// Пользователь, чьи сообщения зритель скрыл.

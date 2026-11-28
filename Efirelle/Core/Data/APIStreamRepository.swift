@@ -99,8 +99,15 @@ struct APIStreamRepository: StreamRepository {
         ChatSocket.events(for: client.socketRequest("/api/channels/\(channel)/ws"), session: client.session)
     }
 
-    func sendMessage(_ text: String, channel: Channel.ID) async throws {
-        try await client.perform("POST", "/api/channels/\(channel)/chat", body: ["text": text])
+    func sendMessage(_ text: String, replyTo: ChatMessage.ID?, channel: Channel.ID) async throws {
+        struct Body: Encodable { let text: String; let replyTo: String? }
+        try await client.perform("POST", "/api/channels/\(channel)/chat", body: Body(text: text, replyTo: replyTo))
+    }
+
+    // MARK: Расписание
+
+    func setReminder(_ on: Bool, for scheduled: ScheduledStream.ID) async throws -> ReminderState {
+        try await client.send(on ? "PUT" : "DELETE", "/api/schedule/\(scheduled)/remind")
     }
 
     func vote(prediction: Prediction.ID, outcome: Prediction.Outcome.ID) async throws -> Prediction {
@@ -194,6 +201,52 @@ struct APIStreamRepository: StreamRepository {
     func raid(target: String) async throws -> Int {
         let result: RaidResult = try await client.send("POST", "/api/studio/raid", body: ["target": target])
         return result.viewers
+    }
+
+    func uploadAvatar(_ jpeg: Data) async throws -> URL? {
+        struct Result: Decodable { let avatarUrl: URL? }
+        let result: Result = try await client.upload("PUT", "/api/me/avatar", image: jpeg, contentType: "image/jpeg")
+        return result.avatarUrl
+    }
+
+    func removeAvatar() async throws {
+        try await client.perform("DELETE", "/api/me/avatar")
+    }
+
+    func uploadBanner(_ jpeg: Data) async throws -> URL? {
+        struct Result: Decodable { let bannerUrl: URL? }
+        let result: Result = try await client.upload("PUT", "/api/studio/banner", image: jpeg, contentType: "image/jpeg")
+        return result.bannerUrl
+    }
+
+    func removeBanner() async throws {
+        try await client.perform("DELETE", "/api/studio/banner")
+    }
+
+    func updateAbout(description: String, links: [ChannelAbout.Link]) async throws {
+        struct Body: Encodable { let description: String; let links: [ChannelAbout.Link] }
+        let _: ChannelAbout = try await client.send("PATCH", "/api/studio/profile", body: Body(description: description, links: links))
+    }
+
+    func scheduleStream(title: String, categoryId: String, startsAt: Date) async throws {
+        struct Body: Encodable { let title: String; let categoryId: String; let startsAt: String }
+        let body = Body(title: title, categoryId: categoryId, startsAt: startsAt.ISO8601Format())
+        try await client.perform("POST", "/api/studio/schedule", body: body)
+    }
+
+    func deleteScheduled(_ id: ScheduledStream.ID) async throws {
+        try await client.perform("DELETE", "/api/studio/schedule/\(id)")
+    }
+
+    func addEmote(code: String, png: Data) async throws {
+        struct Result: Decodable {}
+        let _: Result = try await client.upload(
+            "POST", "/api/studio/emotes", query: [URLQueryItem(name: "code", value: code)], image: png, contentType: "image/png"
+        )
+    }
+
+    func removeEmote(code: String) async throws {
+        try await client.perform("DELETE", "/api/studio/emotes/\(code)")
     }
 }
 

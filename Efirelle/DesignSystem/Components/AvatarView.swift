@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Аватар канала или пользователя: инициалы на тоне.
+/// Аватар канала или пользователя: фото, а пока его нет или оно грузится — инициалы на тоне.
 struct AvatarView: View {
     enum Size {
         case small, medium, large, extraLarge
@@ -35,6 +35,7 @@ struct AvatarView: View {
     var ring: Ring?
     /// Красная точка «в эфире» в углу.
     var showsLiveDot = false
+    var imageURL: URL?
 
     var body: some View {
         Text(initials)
@@ -42,6 +43,17 @@ struct AvatarView: View {
             .foregroundStyle(tone.ink)
             .frame(width: size.points, height: size.points)
             .background(tone.surface, in: .circle)
+            .overlay {
+                if let imageURL {
+                    AsyncImage(url: imageURL) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Color.clear
+                    }
+                    .frame(width: size.points, height: size.points)
+                    .clipShape(.circle)
+                }
+            }
             .padding(ring == nil ? 0 : 3)
             .overlay {
                 if let ring {
@@ -62,7 +74,11 @@ struct AvatarView: View {
 
 extension AvatarView {
     init(channel: Channel, size: Size = .medium, ring: Ring? = nil, showsLiveDot: Bool = false) {
-        self.init(initials: channel.initials, tone: channel.tone, size: size, ring: ring, showsLiveDot: showsLiveDot)
+        self.init(initials: channel.initials, tone: channel.tone, size: size, ring: ring, showsLiveDot: showsLiveDot, imageURL: channel.avatarURL)
+    }
+
+    init(viewer: Viewer, size: Size = .medium) {
+        self.init(initials: viewer.initials, tone: viewer.tone, size: size, imageURL: viewer.avatarUrl)
     }
 }
 

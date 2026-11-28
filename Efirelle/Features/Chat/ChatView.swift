@@ -30,6 +30,11 @@ struct ChatView: View {
                     draft: $bindable.draft,
                     canSend: model.canSend,
                     sparks: viewer.sparks,
+                    replyTarget: model.replyTarget,
+                    emotes: model.emotes,
+                    emoteImages: model.emoteImages,
+                    onCancelReply: { model.replyTarget = nil },
+                    onInsertEmote: { model.insert($0) },
                     onSend: { Task { await model.send(using: repository) } }
                 )
             } else {
@@ -46,6 +51,7 @@ struct ChatView: View {
         }
         .background(Palette.surface, in: .rect(cornerRadius: Radius.xl))
         .task(id: model.prediction?.id) { await model.runPredictionCountdown() }
+        .task(id: model.emotes) { await model.loadEmoteImages() }
         .task(id: model.notice) {
             guard model.notice != nil else { return }
             try? await Task.sleep(for: .seconds(5))
@@ -97,8 +103,13 @@ struct ChatView: View {
                             .frame(maxWidth: .infinity)
                     }
                     ForEach(model.visibleEntries) { entry in
-                        ChatEntryRow(entry: entry, actions: actions(for: entry))
-                            .id(entry.id)
+                        ChatEntryRow(
+                            entry: entry,
+                            actions: actions(for: entry),
+                            emoteImages: model.emoteImages,
+                            username: session.viewer?.username
+                        )
+                        .id(entry.id)
                     }
                 }
                 .padding(Spacing.m)
@@ -122,6 +133,7 @@ struct ChatView: View {
         return ChatEntryRow.Actions(
             canDelete: model.isOwner || viewer.role == .admin,
             canBan: model.isOwner,
+            reply: { model.replyTarget = message },
             report: { reason in Task { await model.report(message, reason: reason, using: repository) } },
             hideAuthor: { Task { await model.hideAuthor(of: message, using: repository) } },
             delete: { Task { await model.delete(message, using: repository) } },
@@ -136,4 +148,5 @@ struct ChatView: View {
         .padding()
         .background(Palette.background)
         .environment(Session())
+        .environment(PushNotifications())
 }

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 /// Чат эфира: лента в реальном времени, фильтр «Важное», отправка, прогноз и модерация
 /// (жалобы, скрытие авторов, удаление, запрет писать — требования App Review 1.2).
@@ -35,6 +36,11 @@ final class ChatViewModel {
     private(set) var notice: String?
     var scope: Scope = .all
     var draft = ""
+    /// Сообщение, на которое отвечает зритель; `nil` — обычное сообщение.
+    var replyTarget: ChatMessage?
+    /// Эмодзи канала и их картинки, уже уменьшенные под строку текста.
+    private(set) var emotes: [Emote] = []
+    private(set) var emoteImages: [String: UIImage] = [:]
 
     init(channelID: Channel.ID) {
         self.channelID = channelID
@@ -56,8 +62,9 @@ final class ChatViewModel {
     }
 
     /// Новые данные экрана: история, прогноз, права зрителя.
-    func reset(messages: [ChatMessage], prediction: Prediction?, isOwner: Bool) {
+    func reset(messages: [ChatMessage], prediction: Prediction?, isOwner: Bool, emotes: [Emote] = []) {
         entries = messages.map(ChatEntry.message)
+        self.emotes = emotes
         self.isOwner = isOwner
         update(prediction)
     }
@@ -95,8 +102,9 @@ final class ChatViewModel {
         isSending = true
         defer { isSending = false }
         do {
-            try await repository.sendMessage(text, channel: channelID)
+            try await repository.sendMessage(text, replyTo: replyTarget?.id, channel: channelID)
             draft = ""
+            replyTarget = nil
             notice = nil
         } catch {
             notice = error.localizedDescription
@@ -145,6 +153,32 @@ final class ChatViewModel {
 
     func clearNotice() {
         notice = nil
+    }
+
+    /// Вставляет эмодзи в поле ввода.
+    func insert(_ emote: Emote) {
+        let separator = draft.isEmpty || draft.hasSuffix(" ") ? "" : " "
+        draft = String("\(draft)\(separator):\(emote.code): ".prefix(Self.maxMessageLength))
+    }
+
+    /// Загружает картинки эмодзи канала. Неудачные просто показываются текстом :код:.
+    func loadEmoteImages(session: URLSession = .shared) async {
+        for emote in emotes where emoteImages[emote.code] == nil {
+            guard
+                let (data, _) = try? await session.data(from: emote.url),
+                let image = UIImage(data: data)
+            else { continue }
+            emoteImages[emote.code] = Self.inlineImage(image)
+        }
+    }
+
+    /// Картинка под высоту строки: Text не умеет масштабировать вставленные изображения.
+    private static func inlineImage(_ image: UIImage, side: CGFloat = 22) -> UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
+            let scale = min(side / image.size.width, side / image.size.height)
+            let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            image.draw(in: CGRect(x: (side - size.width) / 2, y: (side - size.height) / 2, width: size.width, height: size.height))
+        }
     }
 
     /// Обратный отсчёт прогноза: раз в `interval` убавляет секунду. Останавливается при отмене задачи.

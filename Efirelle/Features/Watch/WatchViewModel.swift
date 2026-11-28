@@ -35,7 +35,7 @@ final class WatchViewModel {
             markers = watch.markers
             isFollowing = watch.isFollowing
             followers = watch.channel.followers
-            chat.reset(messages: watch.chat, prediction: watch.prediction, isOwner: watch.isOwner)
+            chat.reset(messages: watch.chat, prediction: watch.prediction, isOwner: watch.isOwner, emotes: watch.emotes)
         }
     }
 

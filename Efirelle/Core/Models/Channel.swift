@@ -1,3 +1,5 @@
+import Foundation
+
 /// Канал автора. `id` — адрес канала (efirelle.ru/live/<id>).
 struct Channel: Identifiable, Hashable, Sendable, Decodable {
     let id: String
@@ -6,18 +8,21 @@ struct Channel: Identifiable, Hashable, Sendable, Decodable {
     let tone: Tone
     let followers: Int
     let isVerified: Bool
+    /// Фото автора; `nil` — инициалы на цвете тона.
+    let avatarURL: URL?
 
-    init(id: String, name: String, initials: String, tone: Tone, followers: Int, isVerified: Bool = false) {
+    init(id: String, name: String, initials: String, tone: Tone, followers: Int, isVerified: Bool = false, avatarURL: URL? = nil) {
         self.id = id
         self.name = name
         self.initials = initials
         self.tone = tone
         self.followers = followers
         self.isVerified = isVerified
+        self.avatarURL = avatarURL
     }
 
     private enum CodingKeys: String, CodingKey {
-        case slug, name, initials, tone, followers, verified
+        case slug, name, initials, tone, followers, verified, avatarUrl
     }
 
     init(from decoder: any Decoder) throws {
@@ -28,6 +33,7 @@ struct Channel: Identifiable, Hashable, Sendable, Decodable {
         tone = try container.decode(Tone.self, forKey: .tone)
         followers = try container.decode(Int.self, forKey: .followers)
         isVerified = try container.decodeIfPresent(Bool.self, forKey: .verified) ?? false
+        avatarURL = try container.decodeIfPresent(URL.self, forKey: .avatarUrl)
     }
 }
 

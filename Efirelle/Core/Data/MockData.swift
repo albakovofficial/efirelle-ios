@@ -1,3 +1,5 @@
+import Foundation
+
 /// Тестовые данные. Используются только `MockStreamRepository`, превью и тестами.
 enum MockData {
     // MARK: Каналы
@@ -63,7 +65,7 @@ enum MockData {
 
     static let viewer = Viewer(
         id: "u-demo", email: "demo@efirelle.ru", username: "demo", displayName: "Демо Зритель",
-        initials: "ДЗ", role: .user, tone: .peach, sparks: 2_480
+        initials: "ДЗ", role: .user, tone: .peach, sparks: 2_480, avatarUrl: nil
     )
 
     static func watch(_ channel: Channel.ID) -> ChannelWatch? {
@@ -72,11 +74,17 @@ enum MockData {
                 channel: stream.channel, stream: stream, isFollowing: false, isOwner: false,
                 markers: moments.filter { $0.channel.id == channel },
                 prediction: channel == Channels.timur.id ? prediction : nil,
-                chat: chat
+                chat: chat,
+                about: about,
+                emotes: [],
+                schedule: schedule
             )
         }
         guard channel == Channels.offline.id else { return nil }
-        return ChannelWatch(channel: Channels.offline, stream: nil, isFollowing: true, isOwner: false, markers: [], prediction: nil, chat: [])
+        return ChannelWatch(
+            channel: Channels.offline, stream: nil, isFollowing: true, isOwner: false, markers: [], prediction: nil, chat: [],
+            about: ChannelAbout(description: "", links: [], bannerUrl: nil), emotes: [], schedule: schedule
+        )
     }
 
     static let following: [ChannelStatus] = [
@@ -90,7 +98,8 @@ enum MockData {
         featured: Array(streams.prefix(3)),
         moments: moments,
         categories: categories,
-        forYou: streams
+        forYou: streams,
+        upcoming: schedule
     )
 
     static let studio = Studio(
@@ -99,8 +108,24 @@ enum MockData {
         settings: .init(title: "Мой первый эфир", categoryId: "talk", tags: ["Общение"]),
         ingest: .init(server: "rtmp://efirelle.ru/live", streamKey: "demo?key=preview"),
         prediction: nil,
-        bans: []
+        bans: [],
+        about: about,
+        emotes: [],
+        schedule: schedule
     )
+
+    static let about = ChannelAbout(
+        description: "Финалы турниров и разборы партий каждую пятницу.",
+        links: [.init(title: "Telegram", url: "https://t.me/efirelle")],
+        bannerUrl: nil
+    )
+
+    static let schedule: [ScheduledStream] = [
+        ScheduledStream(
+            id: "sc1", channel: Channels.offline, title: "Акварель на ночь", category: "Искусство", categoryId: "art",
+            startsAt: Date(timeIntervalSince1970: 1_800_000_000), reminders: 12, isReminded: false
+        ),
+    ]
 
     // MARK: Сборка
 

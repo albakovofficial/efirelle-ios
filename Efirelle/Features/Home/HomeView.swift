@@ -52,6 +52,12 @@ private struct HomeContentView: View {
                 } else {
                     featured
                 }
+                if !feed.upcoming.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.s) {
+                        SectionHeader(title: "Скоро в эфире", subtitle: "Нажмите «Напомнить» — пришлём уведомление")
+                        ScheduleStripView(items: feed.upcoming)
+                    }
+                }
                 if !feed.moments.isEmpty {
                     moments
                 }
@@ -139,4 +145,5 @@ private struct HomeContentView: View {
 #Preview {
     HomeView()
         .environment(Session())
+        .environment(PushNotifications())
 }

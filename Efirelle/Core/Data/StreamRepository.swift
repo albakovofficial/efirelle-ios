@@ -1,3 +1,5 @@
+import Foundation
+
 /// Источник данных приложения. Экраны знают только этот протокол:
 /// настоящая реализация — `APIStreamRepository`, для превью и тестов — `MockStreamRepository`.
 protocol StreamRepository: Sendable {
@@ -27,7 +29,7 @@ protocol StreamRepository: Sendable {
     func setFollowing(_ following: Bool, channel: Channel.ID) async throws -> FollowState
     /// События чата в реальном времени. Поток заканчивается при обрыве связи.
     func chatEvents(channel: Channel.ID) -> AsyncStream<ChatServerEvent>
-    func sendMessage(_ text: String, channel: Channel.ID) async throws
+    func sendMessage(_ text: String, replyTo: ChatMessage.ID?, channel: Channel.ID) async throws
     func vote(prediction: Prediction.ID, outcome: Prediction.Outcome.ID) async throws -> Prediction
 
     // MARK: Модерация
@@ -37,6 +39,10 @@ protocol StreamRepository: Sendable {
     func block(username: String) async throws
     func unblock(username: String) async throws
     func blockedUsers() async throws -> [BlockedUser]
+
+    // MARK: Расписание
+
+    func setReminder(_ on: Bool, for scheduled: ScheduledStream.ID) async throws -> ReminderState
 
     // MARK: Уведомления
 
@@ -61,6 +67,21 @@ protocol StreamRepository: Sendable {
     func unban(username: String) async throws
     /// Возвращает, сколько зрителей ушло в рейд.
     func raid(target: String) async throws -> Int
+    /// Картинки уходят в JPEG (см. `ImageUpload`). Возвращают новый адрес картинки.
+    func uploadAvatar(_ jpeg: Data) async throws -> URL?
+    func removeAvatar() async throws
+    func uploadBanner(_ jpeg: Data) async throws -> URL?
+    func removeBanner() async throws
+    func updateAbout(description: String, links: [ChannelAbout.Link]) async throws
+    func scheduleStream(title: String, categoryId: String, startsAt: Date) async throws
+    func deleteScheduled(_ id: ScheduledStream.ID) async throws
+    func addEmote(code: String, png: Data) async throws
+    func removeEmote(code: String) async throws
+}
+
+struct ReminderState: Sendable, Decodable, Equatable {
+    let isReminded: Bool
+    let reminders: Int
 }
 
 /// Данные формы регистрации.

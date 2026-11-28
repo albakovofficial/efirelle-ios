@@ -28,6 +28,14 @@ struct ChatMessage: Identifiable, Hashable, Sendable, Decodable {
     let tone: Tone
     let badge: ChatBadge?
     let text: String
+    /// Ответ на сообщение: кому и начало исходного текста.
+    var replyTo: Reply?
+
+    struct Reply: Hashable, Sendable, Decodable {
+        let id: String
+        let author: String
+        let text: String
+    }
 }
 
 /// Служебное событие — живёт только на экране.

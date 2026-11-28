@@ -51,6 +51,7 @@ struct WatchView: View {
             if watch.stream != nil, !model.markers.isEmpty {
                 StreamMomentsView(markers: model.markers)
             }
+            ChannelAboutView(channel: watch.channel, about: watch.about, schedule: watch.schedule)
         }
     }
 }

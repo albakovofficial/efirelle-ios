@@ -1,3 +1,5 @@
+import Foundation
+
 /// Репозиторий на тестовых данных для превью и тестов. Ничего не сохраняет.
 /// Имитирует сетевую задержку, чтобы были видны состояния загрузки.
 struct MockStreamRepository: StreamRepository {
@@ -50,7 +52,11 @@ struct MockStreamRepository: StreamRepository {
         }
     }
 
-    func sendMessage(_ text: String, channel: Channel.ID) async throws { try await respond(()) }
+    func sendMessage(_ text: String, replyTo: ChatMessage.ID?, channel: Channel.ID) async throws { try await respond(()) }
+
+    func setReminder(_ on: Bool, for scheduled: ScheduledStream.ID) async throws -> ReminderState {
+        try await respond(ReminderState(isReminded: on, reminders: on ? 1 : 0))
+    }
 
     func vote(prediction: Prediction.ID, outcome: Prediction.Outcome.ID) async throws -> Prediction {
         var result = MockData.prediction
@@ -79,6 +85,15 @@ struct MockStreamRepository: StreamRepository {
     func ban(username: String, minutes: Int?) async throws { try await respond(()) }
     func unban(username: String) async throws { try await respond(()) }
     func raid(target: String) async throws -> Int { try await respond(42) }
+    func uploadAvatar(_ jpeg: Data) async throws -> URL? { try await respond(nil) }
+    func removeAvatar() async throws { try await respond(()) }
+    func uploadBanner(_ jpeg: Data) async throws -> URL? { try await respond(nil) }
+    func removeBanner() async throws { try await respond(()) }
+    func updateAbout(description: String, links: [ChannelAbout.Link]) async throws { try await respond(()) }
+    func scheduleStream(title: String, categoryId: String, startsAt: Date) async throws { try await respond(()) }
+    func deleteScheduled(_ id: ScheduledStream.ID) async throws { try await respond(()) }
+    func addEmote(code: String, png: Data) async throws { try await respond(()) }
+    func removeEmote(code: String) async throws { try await respond(()) }
 
     private func respond<Value: Sendable>(_ value: Value) async throws -> Value {
         if latency > .zero {

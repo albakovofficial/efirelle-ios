@@ -22,11 +22,22 @@ struct APIClient: Sendable {
     }
 
     func send<Response: Decodable>(_ method: String, _ path: String, body: some Encodable) async throws -> Response {
-        try await request(method, path, query: [], body: try JSONEncoder().encode(body))
+        try await request(method, path, query: [], body: (data: try JSONEncoder().encode(body), contentType: "application/json"))
     }
 
     func send<Response: Decodable>(_ method: String, _ path: String) async throws -> Response {
         try await request(method, path, query: [], body: nil)
+    }
+
+    /// Картинка телом запроса как есть (аватар, баннер, эмодзи).
+    func upload<Response: Decodable>(
+        _ method: String,
+        _ path: String,
+        query: [URLQueryItem] = [],
+        image: Data,
+        contentType: String
+    ) async throws -> Response {
+        try await request(method, path, query: query, body: (data: image, contentType: contentType))
     }
 
     func perform(_ method: String, _ path: String, body: some Encodable) async throws {
@@ -52,20 +63,20 @@ struct APIClient: Sendable {
         _ method: String,
         _ path: String,
         query: [URLQueryItem],
-        body: Data?
+        body: (data: Data, contentType: String)?
     ) async throws -> Response {
         var components = URLComponents(string: baseURL + path)!
         if !query.isEmpty { components.queryItems = query }
         var request = URLRequest(url: components.url!)
         request.httpMethod = method
-        request.timeoutInterval = 20
+        request.timeoutInterval = body == nil ? 20 : 60
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token = tokens.load() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         if let body {
-            request.httpBody = body
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body.data
+            request.setValue(body.contentType, forHTTPHeaderField: "Content-Type")
         }
 
         let data: Data

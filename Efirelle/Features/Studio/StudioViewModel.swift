@@ -25,6 +25,12 @@ final class StudioViewModel {
     var raidTarget = ""
     var banUsername = ""
     var banMinutes: Int? = 10
+    var about = ChannelAbout(description: "", links: [], bannerUrl: nil)
+    var avatarURL: URL?
+    var scheduleTitle = ""
+    var scheduleCategory = "talk"
+    var scheduleDate = Date.now.addingTimeInterval(3_600)
+    var emoteCode = ""
 
     var canStartPrediction: Bool {
         state.value?.stream != nil && !question.isBlank && outcomes.allSatisfy { !$0.isBlank }
@@ -40,6 +46,9 @@ final class StudioViewModel {
         if let studio = result.value {
             settings = studio.settings
             tagsText = studio.settings.tags.joined(separator: ", ")
+            about = studio.about
+            avatarURL = studio.channel.avatarURL
+            if scheduleTitle.isEmpty { scheduleCategory = studio.settings.categoryId }
         }
     }
 
@@ -121,6 +130,75 @@ final class StudioViewModel {
         await run(success: "Запрет снят", repository: repository) {
             try await repository.unban(username: ban.slug)
         }
+    }
+
+    // MARK: Оформление, расписание, эмодзи
+
+    func uploadAvatar(_ data: Data, using repository: any StreamRepository) async {
+        guard let jpeg = ImageUpload.jpeg(data, maxSide: 512) else { return announce("Не удалось прочитать картинку") }
+        await run(success: "Фото обновлено", repository: repository) { _ = try await repository.uploadAvatar(jpeg) }
+    }
+
+    func removeAvatar(using repository: any StreamRepository) async {
+        await run(success: "Фото убрано", repository: repository) { try await repository.removeAvatar() }
+    }
+
+    func uploadBanner(_ data: Data, using repository: any StreamRepository) async {
+        guard let jpeg = ImageUpload.jpeg(data, maxSide: 1_600) else { return announce("Не удалось прочитать картинку") }
+        await run(success: "Баннер обновлён", repository: repository) { _ = try await repository.uploadBanner(jpeg) }
+    }
+
+    func removeBanner(using repository: any StreamRepository) async {
+        await run(success: "Баннер убран", repository: repository) { try await repository.removeBanner() }
+    }
+
+    func saveAbout(using repository: any StreamRepository) async {
+        let description = about.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let links = about.links
+            .map { ChannelAbout.Link(title: $0.title.trimmingCharacters(in: .whitespaces), url: $0.url.trimmingCharacters(in: .whitespaces)) }
+            .filter { !$0.title.isEmpty || !$0.url.isEmpty }
+        await run(success: "Сохранено", repository: repository) {
+            try await repository.updateAbout(description: description, links: links)
+        }
+    }
+
+    func addLink() {
+        if about.links.count < 5 { about.links.append(.init(title: "", url: "https://")) }
+    }
+
+    func removeLink(at offsets: IndexSet) {
+        about.links.remove(atOffsets: offsets)
+    }
+
+    func createScheduled(using repository: any StreamRepository) async {
+        let title = scheduleTitle.trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else { return }
+        let category = scheduleCategory
+        let date = scheduleDate
+        if await run(success: "Анонс опубликован", repository: repository, action: {
+            try await repository.scheduleStream(title: title, categoryId: category, startsAt: date)
+        }) {
+            scheduleTitle = ""
+        }
+    }
+
+    func deleteScheduled(_ item: ScheduledStream, using repository: any StreamRepository) async {
+        await run(success: "Анонс удалён", repository: repository) { try await repository.deleteScheduled(item.id) }
+    }
+
+    func addEmote(_ data: Data, using repository: any StreamRepository) async {
+        let code = emoteCode.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !code.isEmpty else { return announce("Сначала введите код эмодзи") }
+        guard let png = ImageUpload.squarePNG(data) else { return announce("Не удалось прочитать картинку") }
+        if await run(success: "Эмодзи :\(code): добавлено", repository: repository, action: {
+            try await repository.addEmote(code: code, png: png)
+        }) {
+            emoteCode = ""
+        }
+    }
+
+    func removeEmote(_ emote: Emote, using repository: any StreamRepository) async {
+        await run(success: "Эмодзи удалено", repository: repository) { try await repository.removeEmote(code: emote.code) }
     }
 
     func addOutcome() {

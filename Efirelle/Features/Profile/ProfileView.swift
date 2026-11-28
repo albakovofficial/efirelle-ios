@@ -40,7 +40,7 @@ struct ProfileView: View {
     private func account(_ viewer: Viewer) -> some View {
         Section {
             HStack(spacing: Spacing.s) {
-                AvatarView(initials: viewer.initials, tone: viewer.tone, size: .extraLarge)
+                AvatarView(viewer: viewer, size: .extraLarge)
                 VStack(alignment: .leading, spacing: Spacing.xxs) {
                     Text(viewer.displayName).font(.brandHeadline)
                     Text("@\(viewer.username) · \(viewer.email)")
@@ -50,7 +50,7 @@ struct ProfileView: View {
                 }
             }
             .padding(.vertical, Spacing.xxs)
-            NavigationLink(value: Channel(id: viewer.username, name: viewer.displayName, initials: viewer.initials, tone: viewer.tone, followers: 0)) {
+            NavigationLink(value: Channel(id: viewer.username, name: viewer.displayName, initials: viewer.initials, tone: viewer.tone, followers: 0, avatarURL: viewer.avatarUrl)) {
                 Label("Мой канал", systemImage: "person.crop.square")
             }
             NavigationLink { StudioView() } label: {

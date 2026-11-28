@@ -14,6 +14,8 @@ struct APIStreamRepository: StreamRepository {
     private struct RaidResult: Decodable { let viewers: Int }
     private struct NotificationPreferences: Codable { let live: Bool }
     private struct DeviceBody: Encodable { let token: String; let environment: PushEnvironment }
+    private struct ActivityStartBody: Encodable { let startToken: String? }
+    private struct LiveActivityBody: Encodable { let token: String; let channel: String; let environment: PushEnvironment }
 
     // MARK: Аккаунт
 
@@ -164,6 +166,18 @@ struct APIStreamRepository: StreamRepository {
 
     func unregisterDevice(token: String) async throws {
         try await client.perform("DELETE", "/api/me/devices/\(token)")
+    }
+
+    func setActivityStartToken(_ token: String?, device: String) async throws {
+        try await client.perform("PUT", "/api/me/devices/\(device)/live-activity", body: ActivityStartBody(startToken: token))
+    }
+
+    func registerLiveActivity(token: String, channel: String, environment: PushEnvironment) async throws {
+        try await client.perform(
+            "PUT",
+            "/api/me/live-activities",
+            body: LiveActivityBody(token: token, channel: channel, environment: environment)
+        )
     }
 
     func liveNotificationsEnabled() async throws -> Bool {

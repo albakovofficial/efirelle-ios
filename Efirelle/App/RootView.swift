@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Корневая навигация приложения по вкладкам. Канал из нажатого уведомления открывается поверх.
+/// Корневая навигация приложения по вкладкам. Канал из нажатого уведомления или Live Activity открывается поверх.
 struct RootView: View {
     @Environment(PushNotifications.self) private var push
 
@@ -27,6 +27,7 @@ struct RootView: View {
                     }
             }
         }
+        .onOpenURL { push.open(url: $0) }
     }
 }
 

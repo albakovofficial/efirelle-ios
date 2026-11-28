@@ -3,7 +3,8 @@ import Observation
 import UIKit
 import UserNotifications
 
-/// Уведомления на iPhone: разрешение, токен устройства для сервера и переход в эфир по нажатию.
+/// Уведомления на iPhone: разрешение, токен устройства для сервера и переход в эфир по нажатию
+/// (из уведомления, Live Activity или ссылки efirelle://channel/<адрес>).
 /// Один объект на приложение — его держит `AppDelegate`, который получает токен от системы.
 @MainActor
 @Observable
@@ -13,6 +14,7 @@ final class PushNotifications {
     var pendingChannel: Channel?
     private var deviceToken: String?
     private var repository: (any StreamRepository)?
+    private let liveActivities = LiveActivities()
 
     var isAuthorized: Bool {
         authorization == .authorized || authorization == .provisional || authorization == .ephemeral
@@ -49,14 +51,24 @@ final class PushNotifications {
         deviceToken = token
         guard let repository else { return }
         Task {
-            try? await repository.registerDevice(token: token, environment: .current)
+            guard (try? await repository.registerDevice(token: token, environment: .current)) != nil else { return }
+            liveActivities.activate(deviceToken: token, repository: repository)
         }
     }
 
     /// Перед выходом из аккаунта: уведомления чужого аккаунта на этот iPhone больше не придут.
     func signOut() async {
+        await liveActivities.signOut()
         guard let token = deviceToken, let repository else { return }
         try? await repository.unregisterDevice(token: token)
+    }
+
+    /// Ссылка efirelle://channel/<адрес> — из Live Activity. Возвращает, узнали ли ссылку.
+    @discardableResult
+    func open(url: URL) -> Bool {
+        guard url.scheme == "efirelle", url.host() == "channel", let slug = url.pathComponents.dropFirst().first else { return false }
+        open(channel: slug)
+        return true
     }
 
     func open(channel slug: String) {

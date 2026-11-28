@@ -56,6 +56,10 @@ protocol StreamRepository: Sendable {
     /// Привязать iPhone к аккаунту: на него придут уведомления о начале эфиров.
     func registerDevice(token: String, environment: PushEnvironment) async throws
     func unregisterDevice(token: String) async throws
+    /// Токен запуска Live Activity для устройства; `nil` — Live Activities выключены.
+    func setActivityStartToken(_ token: String?, device: String) async throws
+    /// Токен запущенной Live Activity канала — по нему придут зрители и конец эфира.
+    func registerLiveActivity(token: String, channel: String, environment: PushEnvironment) async throws
     /// Уведомлять ли о начале эфира отслеживаемых каналов.
     func liveNotificationsEnabled() async throws -> Bool
     func setLiveNotifications(_ enabled: Bool) async throws

@@ -95,14 +95,18 @@ jobs:
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
 
       # Без подписи в приложении нет разрешений (push). Временная подпись «-» вшивает их,
-      # а выгрузка переподписывает приложение, сохраняя разрешения.
+      # а выгрузка переподписывает приложение, сохраняя разрешения. Расширения (Live Activity)
+      # подписываются первыми: приложение нельзя подписать, пока внутри есть неподписанный код.
       - name: Embed entitlements
         if: steps.secrets.outputs.ready == 'true'
         run: |
+          APP="$ARCHIVE_PATH/Products/Applications/Efirelle.app"
+          for extension in "$APP"/PlugIns/*.appex; do
+            [ -e "$extension" ] && codesign --force --sign - "$extension"
+          done
           sed 's/$(APS_ENVIRONMENT)/production/' Efirelle/Efirelle.entitlements > "$RUNNER_TEMP/Release.entitlements"
-          codesign --force --sign - --entitlements "$RUNNER_TEMP/Release.entitlements" \
-            "$ARCHIVE_PATH/Products/Applications/Efirelle.app"
-          codesign -d --entitlements - "$ARCHIVE_PATH/Products/Applications/Efirelle.app"
+          codesign --force --sign - --entitlements "$RUNNER_TEMP/Release.entitlements" "$APP"
+          codesign -d --entitlements - "$APP"
 
       - name: Upload to TestFlight
         if: steps.secrets.outputs.ready == 'true'

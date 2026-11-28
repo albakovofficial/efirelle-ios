@@ -82,6 +82,8 @@ struct MockStreamRepository: StreamRepository {
 
     func registerDevice(token: String, environment: PushEnvironment) async throws { try await respond(()) }
     func unregisterDevice(token: String) async throws { try await respond(()) }
+    func setActivityStartToken(_ token: String?, device: String) async throws { try await respond(()) }
+    func registerLiveActivity(token: String, channel: String, environment: PushEnvironment) async throws { try await respond(()) }
     func liveNotificationsEnabled() async throws -> Bool { try await respond(true) }
     func setLiveNotifications(_ enabled: Bool) async throws { try await respond(()) }
 

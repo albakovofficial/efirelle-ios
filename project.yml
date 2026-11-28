@@ -29,7 +29,9 @@ targets:
     platform: iOS
     sources:
       - path: Efirelle
+      - path: Shared
     dependencies:
+      - target: EfirelleLiveActivity
       - package: HaishinKit
         product: HaishinKit
       - package: HaishinKit
@@ -56,6 +58,11 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
+        NSSupportsLiveActivities: true
+        # Ссылки efirelle://channel/<адрес> — по нажатию на Live Activity.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.efirelle.app
+            CFBundleURLSchemes: [efirelle]
         NSCameraUsageDescription: Камера нужна, чтобы вести эфир с iPhone — зрители увидят то, что снимаете.
         NSMicrophoneUsageDescription: Микрофон нужен, чтобы зрители слышали вас в эфире с iPhone.
     settings:
@@ -70,6 +77,31 @@ targets:
           APS_ENVIRONMENT: development
         Release:
           APS_ENVIRONMENT: production
+
+  # Live Activity «канал в эфире»: экран блокировки и Dynamic Island.
+  # Цвета, шрифты и отступы — общие с приложением, чтобы не дублировать.
+  EfirelleLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: EfirelleLiveActivity
+      - path: Shared
+      - path: Efirelle/DesignSystem/Theme/Palette.swift
+      - path: Efirelle/DesignSystem/Theme/Metrics.swift
+      - path: Efirelle/DesignSystem/Theme/Typography.swift
+      - path: Efirelle/Core/Models/Tone.swift
+    info:
+      path: EfirelleLiveActivity/Info.plist
+      properties:
+        CFBundleDisplayName: Efirelle
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.efirelle.app.LiveActivity
+        TARGETED_DEVICE_FAMILY: "1,2"
 
   EfirelleTests:
     type: bundle.unit-test

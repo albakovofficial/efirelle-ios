@@ -2,7 +2,7 @@ import PhotosUI
 import SwiftUI
 import UIKit
 
-/// Студия автора. Эфир ведётся из OBS или другого приложения с RTMP — здесь его адрес и ключ,
+/// Студия автора. Эфир ведётся прямо с камеры iPhone или из OBS — здесь адрес и ключ для OBS,
 /// настройки эфира и инструменты: прогнозы, моменты, рейд, запреты писать в чат.
 struct StudioView: View {
     @Environment(\.streamRepository) private var repository
@@ -12,6 +12,7 @@ struct StudioView: View {
     @State private var avatarItem: PhotosPickerItem?
     @State private var bannerItem: PhotosPickerItem?
     @State private var emoteItem: PhotosPickerItem?
+    @State private var showsBroadcast = false
 
     var body: some View {
         LoadStateView(state: model.state, retry: { await model.load(from: repository) }) { studio in
@@ -52,6 +53,23 @@ struct StudioView: View {
                     LabeledContent("Зрители", value: Formatters.number(stream.viewers))
                 }
                 NavigationLink("Открыть мой канал", value: studio.channel)
+            }
+
+            Section {
+                Button {
+                    showsBroadcast = true
+                } label: {
+                    Label("Эфир с камеры iPhone", systemImage: "video.fill")
+                        .font(.brandHeadline)
+                }
+                .disabled(studio.stream != nil)
+            } footer: {
+                Text(studio.stream == nil
+                    ? "Без OBS: камера и микрофон iPhone, вертикальное видео 720p. Название и категория — из раздела «Об эфире»."
+                    : "Эфир уже идёт из другого приложения.")
+            }
+            .fullScreenCover(isPresented: $showsBroadcast) {
+                BroadcastView(ingest: studio.ingest)
             }
 
             Section {

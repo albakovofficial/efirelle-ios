@@ -17,12 +17,23 @@ settings:
     DEVELOPMENT_TEAM: "" # укажите Team ID из Apple Developer
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
+packages:
+  # Эфир с камеры iPhone: захват, кодирование и отправка по RTMP.
+  HaishinKit:
+    url: https://github.com/HaishinKit/HaishinKit.swift
+    exactVersion: 2.2.5
+
 targets:
   Efirelle:
     type: application
     platform: iOS
     sources:
       - path: Efirelle
+    dependencies:
+      - package: HaishinKit
+        product: HaishinKit
+      - package: HaishinKit
+        product: RTMPHaishinKit
     info:
       path: Efirelle/Info.plist
       properties:
@@ -45,6 +56,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: Камера нужна, чтобы вести эфир с iPhone — зрители увидят то, что снимаете.
+        NSMicrophoneUsageDescription: Микрофон нужен, чтобы зрители слышали вас в эфире с iPhone.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.efirelle.app

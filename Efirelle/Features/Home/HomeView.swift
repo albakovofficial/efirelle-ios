@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Главная: каналы в эфире из отслеживаемых, витрина (или приглашение в эфир), категории-обложки,
+/// Главная: каналы в эфире из отслеживаемых, витрина (или «Эфиров сейчас нет»), категории-обложки,
 /// расписание, моменты, клипы и лента «Для вас».
 struct HomeView: View {
     @Environment(\.streamRepository) private var repository
     @Environment(Session.self) private var session
-    @Environment(BroadcastLauncher.self) private var launcher
     @State private var model = HomeViewModel()
 
     var body: some View {
@@ -17,8 +16,7 @@ struct HomeView: View {
                     following: model.followingLive,
                     categories: model.categories,
                     filter: $model.filter,
-                    forYou: model.filteredForYou,
-                    onGoLive: { Task { await launcher.open(signedIn: session.viewer != nil, repository: repository) } }
+                    forYou: model.filteredForYou
                 )
             }
             .background(Palette.background)
@@ -39,7 +37,6 @@ private struct HomeContentView: View {
     let categories: [StreamCategory]
     @Binding var filter: StreamFilter
     let forYou: [LiveStream]
-    let onGoLive: () -> Void
 
     var body: some View {
         ScrollView {
@@ -50,7 +47,7 @@ private struct HomeContentView: View {
                     FollowingLiveFeedView(streams: following)
                 }
                 if feed.featured.isEmpty {
-                    GoLiveCard(action: onGoLive)
+                    QuietCard()
                 } else {
                     featured
                 }
@@ -157,5 +154,4 @@ private struct HomeContentView: View {
     HomeView()
         .environment(Session())
         .environment(PushNotifications())
-        .environment(BroadcastLauncher())
 }

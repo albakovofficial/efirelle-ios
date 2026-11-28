@@ -61,6 +61,12 @@ private struct HomeContentView: View {
                 if !feed.moments.isEmpty {
                     moments
                 }
+                if !feed.clips.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.s) {
+                        SectionHeader(title: "Популярные клипы", subtitle: "Лучшие моменты недели")
+                        ClipsStripView(clips: feed.clips)
+                    }
+                }
                 categories
                 if !feed.forYou.isEmpty {
                     forYouSection

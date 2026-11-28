@@ -54,6 +54,16 @@ struct MockStreamRepository: StreamRepository {
 
     func sendMessage(_ text: String, replyTo: ChatMessage.ID?, channel: Channel.ID) async throws { try await respond(()) }
 
+    func createClip(title: String, channel: Channel.ID) async throws -> Clip {
+        try await respond(Clip(id: "c1", title: title, channel: MockData.Channels.timur, author: nil, status: .processing, url: nil, durationSeconds: 30, views: 0))
+    }
+
+    func clip(_ id: Clip.ID) async throws -> Clip {
+        try await respond(Clip(id: id, title: "Клип", channel: MockData.Channels.timur, author: nil, status: .ready, url: nil, durationSeconds: 30, views: 1))
+    }
+
+    func countClipView(_ id: Clip.ID) async {}
+
     func setReminder(_ on: Bool, for scheduled: ScheduledStream.ID) async throws -> ReminderState {
         try await respond(ReminderState(isReminded: on, reminders: on ? 1 : 0))
     }

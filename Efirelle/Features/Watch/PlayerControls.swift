@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Кнопки под видео: пауза, звук, длительность эфира или возврат к прямому эфиру.
+/// Кнопки под видео: пауза, звук, клип, длительность эфира или возврат к прямому эфиру.
 struct PlayerControls: View {
     let isPlaying: Bool
     let isMuted: Bool
@@ -10,6 +10,8 @@ struct PlayerControls: View {
     let onTogglePlay: () -> Void
     let onToggleMute: () -> Void
     let onReturnToLive: () -> Void
+    /// «Клип» — последние 30 секунд эфира.
+    var onClip: (() -> Void)?
 
     var body: some View {
         HStack(spacing: Spacing.xs) {
@@ -24,6 +26,10 @@ struct PlayerControls: View {
                 label: isMuted ? "Включить звук" : "Выключить звук",
                 action: onToggleMute
             )
+
+            if let onClip {
+                ControlButton(systemImage: "scissors", label: "Сделать клип", action: onClip)
+            }
 
             Spacer(minLength: 0)
             status

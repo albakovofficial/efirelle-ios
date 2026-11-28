@@ -40,6 +40,13 @@ protocol StreamRepository: Sendable {
     func unblock(username: String) async throws
     func blockedUsers() async throws -> [BlockedUser]
 
+    // MARK: Клипы
+
+    /// Клип последних 30 секунд идущего эфира; файл готовится около полуминуты.
+    func createClip(title: String, channel: Channel.ID) async throws -> Clip
+    func clip(_ id: Clip.ID) async throws -> Clip
+    func countClipView(_ id: Clip.ID) async
+
     // MARK: Расписание
 
     func setReminder(_ on: Bool, for scheduled: ScheduledStream.ID) async throws -> ReminderState

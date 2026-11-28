@@ -52,6 +52,15 @@ struct WatchView: View {
                 StreamMomentsView(markers: model.markers)
             }
             ChannelAboutView(channel: watch.channel, about: watch.about, schedule: watch.schedule)
+            if !watch.clips.isEmpty {
+                VStack(alignment: .leading, spacing: Spacing.s) {
+                    SectionHeader(title: "Клипы", subtitle: "Лучшие моменты, которые сохранили зрители")
+                    ClipsStripView(clips: watch.clips)
+                }
+            }
+            if !watch.recordings.isEmpty {
+                RecordingsListView(recordings: watch.recordings)
+            }
         }
     }
 }

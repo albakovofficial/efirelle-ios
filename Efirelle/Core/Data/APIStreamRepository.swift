@@ -104,6 +104,24 @@ struct APIStreamRepository: StreamRepository {
         try await client.perform("POST", "/api/channels/\(channel)/chat", body: Body(text: text, replyTo: replyTo))
     }
 
+    // MARK: Клипы
+
+    private struct ClipResult: Decodable { let clip: Clip }
+
+    func createClip(title: String, channel: Channel.ID) async throws -> Clip {
+        let result: ClipResult = try await client.send("POST", "/api/channels/\(channel)/clips", body: ["title": title])
+        return result.clip
+    }
+
+    func clip(_ id: Clip.ID) async throws -> Clip {
+        let result: ClipResult = try await client.get("/api/clips/\(id)")
+        return result.clip
+    }
+
+    func countClipView(_ id: Clip.ID) async {
+        try? await client.perform("POST", "/api/clips/\(id)/view", body: [String: String]())
+    }
+
     // MARK: Расписание
 
     func setReminder(_ on: Bool, for scheduled: ScheduledStream.ID) async throws -> ReminderState {

@@ -77,13 +77,16 @@ enum MockData {
                 chat: chat,
                 about: about,
                 emotes: [],
-                schedule: schedule
+                schedule: schedule,
+                recordings: [],
+                clips: []
             )
         }
         guard channel == Channels.offline.id else { return nil }
         return ChannelWatch(
             channel: Channels.offline, stream: nil, isFollowing: true, isOwner: false, markers: [], prediction: nil, chat: [],
-            about: ChannelAbout(description: "", links: [], bannerUrl: nil), emotes: [], schedule: schedule
+            about: ChannelAbout(description: "", links: [], bannerUrl: nil), emotes: [], schedule: schedule,
+            recordings: [], clips: []
         )
     }
 
@@ -99,7 +102,8 @@ enum MockData {
         moments: moments,
         categories: categories,
         forYou: streams,
-        upcoming: schedule
+        upcoming: schedule,
+        clips: []
     )
 
     static let studio = Studio(

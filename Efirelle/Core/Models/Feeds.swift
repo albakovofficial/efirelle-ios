@@ -11,6 +11,7 @@ struct HomeFeed: Hashable, Sendable, Decodable {
     let categories: [StreamCategory]
     let forYou: [LiveStream]
     let upcoming: [ScheduledStream]
+    let clips: [Clip]
 }
 
 struct CategoryStreams: Hashable, Sendable, Decodable {
@@ -39,6 +40,8 @@ struct ChannelWatch: Hashable, Sendable, Decodable {
     let about: ChannelAbout
     let emotes: [Emote]
     let schedule: [ScheduledStream]
+    let recordings: [Recording]
+    let clips: [Clip]
 }
 
 struct FollowState: Hashable, Sendable, Decodable {
@@ -144,4 +147,36 @@ struct ScheduledStream: Identifiable, Hashable, Sendable, Decodable {
         reminders = try container.decode(Int.self, forKey: .reminders)
         isReminded = try container.decode(Bool.self, forKey: .isReminded)
     }
+}
+
+/// Запись завершённого эфира (хранится 3 дня).
+struct Recording: Identifiable, Hashable, Sendable, Decodable {
+    let id: String
+    let title: String
+    let category: String
+    let startedAt: String
+    let durationSeconds: Int
+    let peakViewers: Int
+    let url: URL
+
+    var startDate: Date? { ISODate.parse(startedAt) }
+}
+
+/// Клип — 30 секунд эфира отдельным файлом.
+struct Clip: Identifiable, Hashable, Sendable, Decodable {
+    enum Status: String, Hashable, Sendable, Decodable {
+        case processing, ready, failed
+    }
+
+    let id: String
+    let title: String
+    let channel: Channel
+    let author: String?
+    let status: Status
+    let url: URL?
+    let durationSeconds: Int
+    let views: Int
+
+    /// Ссылка, которой делятся.
+    var shareURL: URL { URL(string: "https://efirelle.ru/clip/\(id)")! }
 }

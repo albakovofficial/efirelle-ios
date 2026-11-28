@@ -9,6 +9,7 @@ struct PluralForms: Sendable {
     static let viewers = PluralForms(one: "зритель", few: "зрителя", many: "зрителей")
     static let followers = PluralForms(one: "отслеживает", few: "отслеживают", many: "отслеживают")
     static let participants = PluralForms(one: "участник", few: "участника", many: "участников")
+    static let views = PluralForms(one: "просмотр", few: "просмотра", many: "просмотров")
 
     func form(for number: Int) -> String {
         let value = abs(number)

@@ -1,29 +1,30 @@
 import SwiftUI
 
-/// Главная: отслеживаемые, витрина, живые моменты, категории и лента «Для вас».
+/// Главная: каналы в эфире из отслеживаемых, витрина (или приглашение в эфир), категории-обложки,
+/// расписание, моменты, клипы и лента «Для вас».
 struct HomeView: View {
     @Environment(\.streamRepository) private var repository
     @Environment(Session.self) private var session
+    @Environment(BroadcastLauncher.self) private var launcher
     @State private var model = HomeViewModel()
 
     var body: some View {
         NavigationStack {
             LoadStateView(state: model.state, retry: { await model.load(from: repository) }) { content in
-                HomeContentView(feed: content, following: model.followingLive, filter: $model.filter, forYou: model.filteredForYou)
+                HomeContentView(
+                    feed: content,
+                    sparks: session.viewer?.sparks,
+                    following: model.followingLive,
+                    categories: model.categories,
+                    filter: $model.filter,
+                    forYou: model.filteredForYou,
+                    onGoLive: { Task { await launcher.open(signedIn: session.viewer != nil, repository: repository) } }
+                )
             }
             .background(Palette.background)
             .refreshable { await model.load(from: repository) }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    LogoView(size: 22)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    if let viewer = session.viewer {
-                        SparksBalanceView(amount: viewer.sparks)
-                    }
-                }
-            }
+            // Своя шапка с логотипом вместо панели навигации; на следующих экранах панель обычная.
+            .toolbar(.hidden, for: .navigationBar)
             .appDestinations()
         }
         // Вход и выход меняют ленту (отслеживаемые) — перезагружаем.
@@ -33,24 +34,28 @@ struct HomeView: View {
 
 private struct HomeContentView: View {
     let feed: HomeFeed
+    let sparks: Int?
     let following: [LiveStream]
+    let categories: [StreamCategory]
     @Binding var filter: StreamFilter
     let forYou: [LiveStream]
+    let onGoLive: () -> Void
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Spacing.xxl) {
+                HomeHeader(sparks: sparks)
+                    .padding(.bottom, -Spacing.m)
                 if !following.isEmpty {
-                    FollowingStripView(streams: following)
+                    FollowingLiveFeedView(streams: following)
                 }
                 if feed.featured.isEmpty {
-                    ContentUnavailableView(
-                        "Сейчас никто не в эфире",
-                        systemImage: "antenna.radiowaves.left.and.right",
-                        description: Text("Станьте первым: адрес сервера и ключ для OBS — в Профиле → Студия.")
-                    )
+                    GoLiveCard(action: onGoLive)
                 } else {
                     featured
+                }
+                if !categories.isEmpty {
+                    categoriesSection
                 }
                 if !feed.upcoming.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.s) {
@@ -67,7 +72,6 @@ private struct HomeContentView: View {
                         ClipsStripView(clips: feed.clips)
                     }
                 }
-                categories
                 if !feed.forYou.isEmpty {
                     forYouSection
                 }
@@ -109,12 +113,13 @@ private struct HomeContentView: View {
         }
     }
 
-    private var categories: some View {
+    /// Категории, где сейчас смотрят больше всего, — первыми.
+    private var categoriesSection: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             SectionHeader(title: "Категории")
             ScrollView(.horizontal) {
                 HStack(alignment: .top, spacing: Spacing.s) {
-                    ForEach(feed.categories) { category in
+                    ForEach(categories) { category in
                         NavigationLink(value: category) { CategoryCardView(category: category) }
                             .buttonStyle(.plain)
                     }
@@ -152,4 +157,5 @@ private struct HomeContentView: View {
     HomeView()
         .environment(Session())
         .environment(PushNotifications())
+        .environment(BroadcastLauncher())
 }

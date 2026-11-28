@@ -24,6 +24,15 @@ struct HomeViewModelTests {
         #expect(matches)
     }
 
+    @Test("Категории — по числу зрителей, самые смотрибельные первыми")
+    func categoriesByViewers() async throws {
+        let model = HomeViewModel()
+        await model.load(from: MockStreamRepository.instant)
+        let viewers = model.categories.map(\.viewers)
+        #expect(viewers == viewers.sorted(by: >))
+        #expect(model.categories.count == model.state.value?.categories.count)
+    }
+
     @Test("Ошибка загрузки переводит экран в состояние ошибки")
     func failure() async {
         let model = HomeViewModel()

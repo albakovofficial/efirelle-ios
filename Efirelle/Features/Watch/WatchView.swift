@@ -38,6 +38,8 @@ struct WatchView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.load(from: repository) }
         .task { await model.listen(to: repository) }
+        // Снизу чат с полем ввода — нижняя панель ему мешает.
+        .hidesTabBar()
     }
 
     private func mainColumn(_ watch: ChannelWatch) -> some View {

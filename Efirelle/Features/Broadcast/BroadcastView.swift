@@ -2,14 +2,14 @@ import SwiftUI
 import UIKit
 
 /// Эфир с iPhone: камера во весь экран, сверху — статус и длительность, снизу — микрофон, «В эфир» и смена камеры.
-/// Название и категория эфира берутся из студии, как и для OBS.
+/// Название и категория эфира берутся из студии, как и для OBS. Во время эфира экран можно свернуть —
+/// эфир продолжится, вернуться можно кнопкой в нижней панели.
 struct BroadcastView: View {
+    let session: BroadcastSession
     let ingest: Studio.Ingest
 
-    @State private var session = BroadcastSession()
-    @State private var confirmsExit = false
+    @State private var confirmsEnd = false
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -30,17 +30,13 @@ struct BroadcastView: View {
         }
         .statusBarHidden()
         .task { await session.prepare() }
-        .onDisappear { Task { await session.shutdown() } }
-        // В фоне iOS выключает камеру — эфир честно завершаем, а не показываем зрителям застывший кадр.
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .background { Task { await session.stop() } }
+        // Свёрнутый эфир продолжается; без эфира камера и микрофон выключаются.
+        .onDisappear {
+            if !session.isLive { Task { await session.shutdown() } }
         }
-        .confirmationDialog("Завершить эфир?", isPresented: $confirmsExit, titleVisibility: .visible) {
+        .confirmationDialog("Завершить эфир?", isPresented: $confirmsEnd, titleVisibility: .visible) {
             Button("Завершить", role: .destructive) {
-                Task {
-                    await session.stop()
-                    dismiss()
-                }
+                Task { await session.stop() }
             }
         }
         .sensoryFeedback(.success, trigger: session.isLive) { _, live in live }
@@ -48,8 +44,11 @@ struct BroadcastView: View {
 
     private var topBar: some View {
         HStack {
-            RoundButton(systemImage: "xmark", label: "Закрыть") {
-                if session.isLive { confirmsExit = true } else { dismiss() }
+            RoundButton(
+                systemImage: session.isLive ? "chevron.down" : "xmark",
+                label: session.isLive ? "Свернуть, эфир продолжится" : "Закрыть"
+            ) {
+                dismiss()
             }
             Spacer()
             status
@@ -99,12 +98,10 @@ struct BroadcastView: View {
 
     private var liveButton: some View {
         Button {
-            Task {
-                if session.isLive {
-                    await session.stop()
-                } else {
-                    await session.start(server: ingest.server, streamKey: ingest.streamKey)
-                }
+            if session.isLive {
+                confirmsEnd = true
+            } else {
+                Task { await session.start(server: ingest.server, streamKey: ingest.streamKey) }
             }
         } label: {
             Text(session.isLive ? "Завершить" : "В эфир")

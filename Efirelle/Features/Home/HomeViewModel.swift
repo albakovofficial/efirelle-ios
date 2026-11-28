@@ -11,6 +11,14 @@ final class HomeViewModel {
         state.value?.forYou.filter(filter.includes) ?? []
     }
 
+    /// Категории по числу зрителей; при равенстве — в исходном порядке.
+    var categories: [StreamCategory] {
+        let list = state.value?.categories ?? []
+        return list.indices
+            .sorted { (list[$0].viewers, -$0) > (list[$1].viewers, -$1) }
+            .map { list[$0] }
+    }
+
     /// Отслеживаемые каналы, которые сейчас в эфире.
     var followingLive: [LiveStream] {
         state.value?.following.compactMap(\.stream) ?? []

@@ -12,7 +12,7 @@ struct StudioView: View {
     @State private var avatarItem: PhotosPickerItem?
     @State private var bannerItem: PhotosPickerItem?
     @State private var emoteItem: PhotosPickerItem?
-    @State private var showsBroadcast = false
+    @Environment(BroadcastLauncher.self) private var launcher
 
     var body: some View {
         LoadStateView(state: model.state, retry: { await model.load(from: repository) }) { studio in
@@ -57,7 +57,7 @@ struct StudioView: View {
 
             Section {
                 Button {
-                    showsBroadcast = true
+                    Task { await launcher.open(signedIn: true, repository: repository) }
                 } label: {
                     Label("Эфир с камеры iPhone", systemImage: "video.fill")
                         .font(.brandHeadline)
@@ -67,9 +67,6 @@ struct StudioView: View {
                 Text(studio.stream == nil
                     ? "Без OBS: камера и микрофон iPhone, вертикальное видео 720p. Название и категория — из раздела «Об эфире»."
                     : "Эфир уже идёт из другого приложения.")
-            }
-            .fullScreenCover(isPresented: $showsBroadcast) {
-                BroadcastView(ingest: studio.ingest)
             }
 
             Section {
@@ -364,4 +361,5 @@ struct StudioView: View {
     NavigationStack {
         StudioView()
     }
+    .environment(BroadcastLauncher())
 }

@@ -62,7 +62,7 @@ struct RootView: View {
     private func screen(_ tab: AppTab) -> some View {
         switch tab {
         case .home: HomeView()
-        case .browse: BrowseView()
+        case .search: SearchView()
         case .following: FollowingView()
         case .profile: ProfileView()
         }

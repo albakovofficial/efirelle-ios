@@ -12,6 +12,7 @@ struct PluralForms: Sendable {
     static let views = PluralForms(one: "просмотр", few: "просмотра", many: "просмотров")
     static let messages = PluralForms(one: "сообщение", few: "сообщения", many: "сообщений")
     static let words = PluralForms(one: "слово", few: "слова", many: "слов")
+    static let channels = PluralForms(one: "канал", few: "канала", many: "каналов")
     static let subscribers = PluralForms(one: "подписчик", few: "подписчика", many: "подписчиков")
 
     func form(for number: Int) -> String {

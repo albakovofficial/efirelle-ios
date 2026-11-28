@@ -1,7 +1,7 @@
 /// Вкладки приложения.
 enum AppTab: String, CaseIterable, Identifiable, Sendable {
     case home
-    case browse
+    case search
     case following
     case profile
 
@@ -11,7 +11,7 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .home: "Главная"
-        case .browse: "Обзор"
+        case .search: "Поиск"
         case .following: "Подписки"
         case .profile: "Профиль"
         }
@@ -25,7 +25,7 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
     var symbol: String {
         switch self {
         case .home: "house.fill"
-        case .browse: "square.grid.2x2.fill"
+        case .search: "magnifyingglass"
         case .following: "heart.fill"
         case .profile: "person.crop.circle.fill"
         }

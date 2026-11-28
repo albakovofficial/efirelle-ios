@@ -45,7 +45,7 @@ struct WatchView: View {
     private func mainColumn(_ watch: ChannelWatch) -> some View {
         VStack(spacing: Spacing.l) {
             if let stream = watch.stream {
-                PlayerView(stream: stream, viewers: model.viewers)
+                PlayerView(stream: stream, viewers: model.viewers, chat: model.chat)
             } else {
                 OfflineStageView(channel: watch.channel)
             }

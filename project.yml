@@ -49,8 +49,13 @@ targets:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
+        # Лёжа — только полноэкранный эфир; остальное приложение вертикальное (OrientationLock).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Звук эфира и картинка в картинке продолжаются, когда приложение свёрнуто.
+        UIBackgroundModes: [audio]
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown

@@ -1,18 +1,18 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Плеер прямого эфира: видео с метками поверх и кнопки управления.
+/// Полный экран — кнопкой или поворотом iPhone; картинка в картинке — в меню «Ещё» и сама при сворачивании.
 struct PlayerView: View {
     let stream: LiveStream
     /// Зрители из чата в реальном времени.
     let viewers: Int
+    /// Чат канала — выдвигается сбоку в полном экране.
+    var chat: ChatViewModel?
 
-    @State private var isPlaying = true
-    @State private var isMuted = false
-    /// Зритель ставил на паузу — смотрит с отставанием.
-    @State private var isBehindLive = false
-    /// Увеличивается, когда нужно вернуться к прямому эфиру.
-    @State private var liveRequest = 0
+    @State private var playback = StreamPlayback()
+    @State private var showsFullscreen = false
     /// Когда начался эфир — для тикающей длительности.
     @State private var startedAt: Date
     @State private var showsClipPrompt = false
@@ -26,21 +26,16 @@ struct PlayerView: View {
     @Environment(\.streamRepository) private var repository
     @Environment(Session.self) private var session
 
-    init(stream: LiveStream, viewers: Int) {
+    init(stream: LiveStream, viewers: Int, chat: ChatViewModel? = nil) {
         self.stream = stream
         self.viewers = viewers
+        self.chat = chat
         _startedAt = State(initialValue: Date.now.addingTimeInterval(-Double(stream.duration.components.seconds)))
     }
 
     var body: some View {
         VStack(spacing: Spacing.s) {
-            VideoSurface(
-                url: source,
-                tone: stream.tone,
-                isPlaying: isPlaying,
-                isMuted: isMuted,
-                liveRequest: liveRequest
-            )
+            VideoSurface(playback: playback, tone: stream.tone, hasVideo: stream.playbackURL != nil, isActive: !showsFullscreen)
             .aspectRatio(16 / 9, contentMode: .fit)
             .clipShape(.rect(cornerRadius: Radius.l))
             .overlay(alignment: .topLeading) {
@@ -52,25 +47,41 @@ struct PlayerView: View {
             }
 
             PlayerControls(
-                isPlaying: isPlaying,
-                isMuted: isMuted,
-                isBehindLive: isBehindLive,
+                playback: playback,
                 startedAt: startedAt,
-                onTogglePlay: togglePlay,
-                onToggleMute: { isMuted.toggle() },
-                onReturnToLive: returnToLive,
+                qualities: stream.qualities,
+                selectedQuality: source,
+                onSelectQuality: { selectedQuality = $0 },
+                onFullscreen: { showsFullscreen = true },
                 onClip: {
                     if session.viewer == nil {
                         showsSignIn = true
                     } else {
                         showsClipPrompt = true
                     }
-                },
+                }
+            )
+            .padding(.horizontal, Spacing.xxs)
+        }
+        .task(id: source) { playback.load(source) }
+        .onDisappear {
+            if !showsFullscreen { playback.stopIfNotInPictureInPicture() }
+        }
+        // Повернули iPhone горизонтально — сразу полный экран.
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            if UIDevice.current.userInterfaceIdiom == .phone, UIDevice.current.orientation.isLandscape { showsFullscreen = true }
+        }
+        .fullScreenCover(isPresented: $showsFullscreen) {
+            FullscreenPlayerView(
+                stream: stream,
+                viewers: viewers,
+                startedAt: startedAt,
+                playback: playback,
+                chat: chat,
                 qualities: stream.qualities,
                 selectedQuality: source,
                 onSelectQuality: { selectedQuality = $0 }
             )
-            .padding(.horizontal, Spacing.xxs)
         }
         .alert("Клип последних 30 секунд", isPresented: $showsClipPrompt) {
             TextField("Название клипа", text: $clipTitle)
@@ -108,16 +119,5 @@ struct PlayerView: View {
             clipError = error.localizedDescription
             showsClipError = true
         }
-    }
-
-    private func togglePlay() {
-        isPlaying.toggle()
-        if !isPlaying { isBehindLive = true }
-    }
-
-    private func returnToLive() {
-        liveRequest += 1
-        isPlaying = true
-        isBehindLive = false
     }
 }

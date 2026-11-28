@@ -1,7 +1,7 @@
 import UIKit
 import UserNotifications
 
-/// Принимает от системы токен для уведомлений и нажатия на уведомления.
+/// Принимает от системы токен для уведомлений, нажатия на уведомления и разрешённые ориентации экрана.
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     let push = PushNotifications()
@@ -12,6 +12,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         return true
+    }
+
+    /// Лёжа — только полноэкранный эфир (см. OrientationLock).
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        OrientationLock.mask
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {

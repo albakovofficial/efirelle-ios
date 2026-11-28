@@ -1,77 +1,49 @@
 import SwiftUI
 
-/// Кнопки под видео: пауза, звук, качество, клип, длительность эфира или возврат к прямому эфиру.
+/// Кнопки под видео: пауза, звук, клип, «Ещё» (качество, картинка в картинке), полный экран
+/// и длительность эфира или возврат к прямому эфиру.
 struct PlayerControls: View {
-    let isPlaying: Bool
-    let isMuted: Bool
-    let isBehindLive: Bool
+    let playback: StreamPlayback
     /// Когда начался эфир — для тикающей длительности.
     let startedAt: Date
-    let onTogglePlay: () -> Void
-    let onToggleMute: () -> Void
-    let onReturnToLive: () -> Void
+    let qualities: [LiveStream.Quality]
+    let selectedQuality: URL?
+    let onSelectQuality: (URL) -> Void
+    let onFullscreen: () -> Void
     /// «Клип» — последние 30 секунд эфира.
     var onClip: (() -> Void)?
-    /// Варианты качества; меню появляется, когда их больше одного.
-    var qualities: [LiveStream.Quality] = []
-    var selectedQuality: URL?
-    var onSelectQuality: (URL) -> Void = { _ in }
 
     var body: some View {
         HStack(spacing: Spacing.xs) {
             ControlButton(
-                systemImage: isPlaying ? "pause.fill" : "play.fill",
-                label: isPlaying ? "Пауза" : "Смотреть",
+                systemImage: playback.isPlaying ? "pause.fill" : "play.fill",
+                label: playback.isPlaying ? "Пауза" : "Смотреть",
                 isProminent: true,
-                action: onTogglePlay
+                action: playback.togglePlay
             )
             ControlButton(
-                systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                label: isMuted ? "Включить звук" : "Выключить звук",
-                action: onToggleMute
+                systemImage: playback.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                label: playback.isMuted ? "Включить звук" : "Выключить звук",
+                action: playback.toggleMute
             )
-
-            if qualities.count > 1 {
-                qualityMenu
-            }
-
             if let onClip {
                 ControlButton(systemImage: "scissors", label: "Сделать клип", action: onClip)
             }
+            PlaybackMenu(playback: playback, qualities: qualities, selectedQuality: selectedQuality, onSelectQuality: onSelectQuality) {
+                ControlIcon(systemImage: "ellipsis")
+            }
+            ControlButton(systemImage: "arrow.up.left.and.arrow.down.right", label: "Во весь экран", action: onFullscreen)
 
             Spacer(minLength: 0)
             status
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: isPlaying)
-    }
-
-    private var qualityMenu: some View {
-        Menu {
-            ForEach(qualities, id: \.url) { quality in
-                Button {
-                    onSelectQuality(quality.url)
-                } label: {
-                    if quality.url == selectedQuality {
-                        Label(quality.label, systemImage: "checkmark")
-                    } else {
-                        Text(quality.label)
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Palette.ink)
-                .frame(width: TapTarget.minimum, height: TapTarget.minimum)
-                .background(Palette.surfaceMuted, in: .rect(cornerRadius: Radius.s))
-        }
-        .accessibilityLabel("Качество")
+        .sensoryFeedback(.impact(weight: .light), trigger: playback.isPlaying)
     }
 
     @ViewBuilder
     private var status: some View {
-        if isBehindLive {
-            Button(action: onReturnToLive) {
+        if playback.isBehindLive {
+            Button(action: playback.returnToLive) {
                 Text("К эфиру")
                     .font(.brandCaption)
                     .foregroundStyle(.white)
@@ -83,13 +55,14 @@ struct PlayerControls: View {
         } else {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Label {
-                    Text("Прямой эфир · \(Formatters.clock(.seconds(context.date.timeIntervalSince(startedAt))))")
+                    Text(Formatters.clock(.seconds(context.date.timeIntervalSince(startedAt))))
                         .monospacedDigit()
                 } icon: {
                     Circle().fill(Palette.live).frame(width: 8, height: 8)
                 }
                 .font(.brandCaption)
                 .foregroundStyle(Palette.ink)
+                .accessibilityLabel("Прямой эфир")
             }
         }
     }
@@ -103,13 +76,22 @@ private struct ControlButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(isProminent ? .white : Palette.ink)
-                .frame(width: TapTarget.minimum, height: TapTarget.minimum)
-                .background(isProminent ? Palette.inkSurface : Palette.surfaceMuted, in: .rect(cornerRadius: Radius.s))
+            ControlIcon(systemImage: systemImage, isProminent: isProminent)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+}
+
+private struct ControlIcon: View {
+    let systemImage: String
+    var isProminent = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(isProminent ? .white : Palette.ink)
+            .frame(width: TapTarget.minimum, height: TapTarget.minimum)
+            .background(isProminent ? Palette.inkSurface : Palette.surfaceMuted, in: .rect(cornerRadius: Radius.s))
     }
 }

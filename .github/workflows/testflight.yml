@@ -6,7 +6,7 @@ name: TestFlight
 #   APP_STORE_CONNECT_KEY_ID       — Key ID ключа App Store Connect API
 #   APP_STORE_CONNECT_ISSUER_ID    — Issuer ID
 #   APP_STORE_CONNECT_PRIVATE_KEY  — содержимое файла AuthKey_XXXX.p8 целиком
-# и переменная APPLE_TEAM_ID (Settings → Secrets and variables → Actions → Variables).
+# и APPLE_TEAM_ID — переменной или секретом.
 #
 # Версия — MARKETING_VERSION из project.yml (1.0). Номер сборки идёт по порядку: 1, 2, 3, 4…
 # Он берётся из App Store Connect (последняя загруженная сборка + 1), поэтому неудачные запуски номер не тратят.
@@ -30,7 +30,8 @@ jobs:
     env:
       KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-      TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      # Team ID не секрет, но можно задать и переменной, и секретом.
+      TEAM_ID: ${{ vars.APPLE_TEAM_ID || secrets.APPLE_TEAM_ID }}
     steps:
       - name: Check App Store Connect secrets
         id: secrets

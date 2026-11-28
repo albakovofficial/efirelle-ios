@@ -55,7 +55,7 @@ struct ChannelHeaderView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(Palette.ink)
+            .tint(Palette.inkSurface)
         } else {
             Button {
                 if session.viewer == nil {
@@ -76,7 +76,7 @@ struct ChannelHeaderView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(model.isFollowing ? Palette.ink : Palette.accent)
+            .tint(model.isFollowing ? Palette.inkSurface : Palette.accent)
             .disabled(model.isUpdatingFollow)
             .sensoryFeedback(.selection, trigger: model.isFollowing)
         }

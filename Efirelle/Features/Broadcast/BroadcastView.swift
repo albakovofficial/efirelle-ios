@@ -108,7 +108,7 @@ struct BroadcastView: View {
                 .font(.brandHeadline)
                 .foregroundStyle(.white)
                 .frame(width: 150, height: 56)
-                .background(session.isLive ? Palette.ink : Palette.live, in: .capsule)
+                .background(session.isLive ? Palette.inkSurface : Palette.live, in: .capsule)
                 .overlay {
                     if session.state == .connecting {
                         ProgressView().tint(.white)

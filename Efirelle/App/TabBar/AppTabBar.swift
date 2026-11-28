@@ -19,7 +19,7 @@ struct AppTabBar: View {
             .padding(6)
             .background(Palette.surface, in: .capsule)
             .overlay(Capsule().strokeBorder(Palette.line, lineWidth: 0.5))
-            .shadow(color: Palette.ink.opacity(0.08), radius: 18, y: 8)
+            .shadow(color: .black.opacity(0.08), radius: 18, y: 8)
 
             GoLiveButton(broadcast: broadcast, action: onGoLive)
         }
@@ -71,8 +71,8 @@ private struct GoLiveButton: View {
             label
                 .foregroundStyle(.white)
                 .frame(width: 60, height: 60)
-                .background(broadcast.isLive ? Palette.ink : Palette.live, in: .circle)
-                .shadow(color: (broadcast.isLive ? Palette.ink : Palette.live).opacity(0.3), radius: 14, y: 6)
+                .background(broadcast.isLive ? Palette.inkSurface : Palette.live, in: .circle)
+                .shadow(color: (broadcast.isLive ? Palette.inkSurface : Palette.live).opacity(0.3), radius: 14, y: 6)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(broadcast.isLive ? "Вернуться к своему эфиру" : "Начать эфир")

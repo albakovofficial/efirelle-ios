@@ -42,7 +42,7 @@ struct ScheduleCardView: View {
                     .frame(maxWidth: .infinity, minHeight: 36)
             }
             .buttonStyle(.borderedProminent)
-            .tint(reminded ? Palette.ink : Palette.accent)
+            .tint(reminded ? Palette.inkSurface : Palette.accent)
             .sensoryFeedback(.selection, trigger: reminded)
         }
         .padding(Spacing.m)

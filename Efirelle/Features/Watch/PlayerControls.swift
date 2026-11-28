@@ -107,7 +107,7 @@ private struct ControlButton: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(isProminent ? .white : Palette.ink)
                 .frame(width: TapTarget.minimum, height: TapTarget.minimum)
-                .background(isProminent ? Palette.ink : Palette.surfaceMuted, in: .rect(cornerRadius: Radius.s))
+                .background(isProminent ? Palette.inkSurface : Palette.surfaceMuted, in: .rect(cornerRadius: Radius.s))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

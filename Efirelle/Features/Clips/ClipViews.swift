@@ -136,7 +136,7 @@ struct RecordingsListView: View {
                         Image(systemName: "play.fill")
                             .foregroundStyle(.white)
                             .frame(width: 40, height: 40)
-                            .background(Palette.ink, in: .rect(cornerRadius: Radius.s))
+                            .background(Palette.inkSurface, in: .rect(cornerRadius: Radius.s))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(recording.title).font(.brandCallout).foregroundStyle(Palette.ink).lineLimit(1)
                             Text(subtitle(recording)).font(.brandCaption).foregroundStyle(Palette.muted)

@@ -15,7 +15,7 @@ struct ThumbnailView: View {
                         .frame(width: width * 0.7)
                         .offset(x: width * 0.48, y: -width * 0.22)
                     Circle()
-                        .fill(.white.opacity(0.5))
+                        .fill(Palette.highlight)
                         .frame(width: width * 0.3)
                         .offset(x: width * 0.1, y: proxy.size.height - width * 0.16)
                 }

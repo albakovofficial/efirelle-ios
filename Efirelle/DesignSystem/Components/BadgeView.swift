@@ -12,7 +12,7 @@ struct BadgeView: View {
             switch self {
             case .live: Palette.live
             case .glass: Palette.glass
-            case .dark: Palette.ink.opacity(0.85)
+            case .dark: Palette.inkSurface.opacity(0.85)
             case .tone(let tone): tone.surface
             }
         }

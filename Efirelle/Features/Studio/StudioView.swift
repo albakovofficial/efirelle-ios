@@ -33,7 +33,7 @@ struct StudioView: View {
                     .foregroundStyle(.white)
                     .padding(Spacing.s)
                     .frame(maxWidth: .infinity)
-                    .background(Palette.ink, in: .rect(cornerRadius: Radius.m))
+                    .background(Palette.inkSurface, in: .rect(cornerRadius: Radius.m))
                     .padding(Spacing.m)
             }
         }

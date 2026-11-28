@@ -47,7 +47,6 @@ targets:
         CFBundleDevelopmentRegion: ru
         UILaunchScreen:
           UIColorName: LaunchBackground
-        UIUserInterfaceStyle: Light
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
         UISupportedInterfaceOrientations:

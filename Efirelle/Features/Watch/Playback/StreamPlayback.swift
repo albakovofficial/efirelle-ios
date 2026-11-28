@@ -84,7 +84,8 @@ final class StreamPlayback {
     }
 }
 
-/// Сообщает, когда картинка в картинке включилась и выключилась.
+/// Сообщает, когда картинка в картинке включилась и выключилась. Система зовёт делегата на главном потоке.
+@MainActor
 private final class PictureInPictureDelegate: NSObject, AVPictureInPictureControllerDelegate {
     private let onChange: @MainActor (Bool) -> Void
 
@@ -92,11 +93,11 @@ private final class PictureInPictureDelegate: NSObject, AVPictureInPictureContro
         self.onChange = onChange
     }
 
-    func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
+    nonisolated func pictureInPictureControllerDidStartPictureInPicture(_ controller: AVPictureInPictureController) {
         MainActor.assumeIsolated { onChange(true) }
     }
 
-    func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
+    nonisolated func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
         MainActor.assumeIsolated { onChange(false) }
     }
 }

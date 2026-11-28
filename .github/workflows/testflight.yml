@@ -1,6 +1,7 @@
 name: TestFlight
 
-# Запуск вручную: Actions → TestFlight → Run workflow.
+# Запускается сам после каждого успешного CI на main (новые версии сразу уходят в TestFlight)
+# и вручную: Actions → TestFlight → Run workflow. Пока секретов нет — сборка пропускается без ошибки.
 # Нужны секреты репозитория (Settings → Secrets and variables → Actions):
 #   APP_STORE_CONNECT_KEY_ID       — Key ID ключа App Store Connect API
 #   APP_STORE_CONNECT_ISSUER_ID    — Issuer ID
@@ -11,6 +12,10 @@ name: TestFlight
 # Он берётся из App Store Connect (последняя загруженная сборка + 1), поэтому неудачные запуски номер не тратят.
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 concurrency:
   group: testflight
@@ -19,6 +24,7 @@ concurrency:
 jobs:
   upload:
     name: Archive & upload
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: macos-15
     timeout-minutes: 45
     env:
@@ -26,11 +32,27 @@ jobs:
       ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
     steps:
+      - name: Check App Store Connect secrets
+        id: secrets
+        run: |
+          if [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ] || [ -z "$TEAM_ID" ]; then
+            echo "::notice::Секреты App Store Connect ещё не заданы — сборка для TestFlight пропущена. См. комментарий в начале файла."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v5
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          # После CI собираем ровно тот коммит, который прошёл проверки.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: ./.github/actions/prepare
+        if: steps.secrets.outputs.ready == 'true'
 
       - name: Install App Store Connect API key
+        if: steps.secrets.outputs.ready == 'true'
         env:
           PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
@@ -47,6 +69,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Next build number
+        if: steps.secrets.outputs.ready == 'true'
         env:
           BUNDLE_ID: com.efirelle.app
         run: |
@@ -55,6 +78,7 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
       - name: Archive
+        if: steps.secrets.outputs.ready == 'true'
         run: |
           set -o pipefail
           xcodebuild archive \
@@ -72,6 +96,7 @@ jobs:
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: Upload to TestFlight
+        if: steps.secrets.outputs.ready == 'true'
         run: |
           set -o pipefail
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF

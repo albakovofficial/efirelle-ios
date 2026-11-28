@@ -7,6 +7,7 @@ struct ChannelHeaderView: View {
 
     @Environment(\.streamRepository) private var repository
     @Environment(Session.self) private var session
+    @Environment(PushNotifications.self) private var push
     @State private var showsSignIn = false
 
     var body: some View {
@@ -60,7 +61,13 @@ struct ChannelHeaderView: View {
                 if session.viewer == nil {
                     showsSignIn = true
                 } else {
-                    Task { await model.toggleFollow(using: repository) }
+                    Task {
+                        await model.toggleFollow(using: repository)
+                        // Подходящий момент спросить про уведомления: человек только что подписался.
+                        if model.isFollowing, push.authorization == .notDetermined {
+                            await push.requestAuthorization(using: repository)
+                        }
+                    }
                 }
             } label: {
                 Label(model.isFollowing ? "Отслеживаете" : "Отслеживать", systemImage: model.isFollowing ? "heart.fill" : "heart")

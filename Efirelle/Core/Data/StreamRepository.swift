@@ -38,6 +38,15 @@ protocol StreamRepository: Sendable {
     func unblock(username: String) async throws
     func blockedUsers() async throws -> [BlockedUser]
 
+    // MARK: Уведомления
+
+    /// Привязать iPhone к аккаунту: на него придут уведомления о начале эфиров.
+    func registerDevice(token: String, environment: PushEnvironment) async throws
+    func unregisterDevice(token: String) async throws
+    /// Уведомлять ли о начале эфира отслеживаемых каналов.
+    func liveNotificationsEnabled() async throws -> Bool
+    func setLiveNotifications(_ enabled: Bool) async throws
+
     // MARK: Студия
 
     func studio() async throws -> Studio
@@ -60,4 +69,18 @@ struct RegistrationForm: Sendable, Encodable {
     var password: String
     var username: String
     var displayName: String
+}
+
+/// Сервер APNs, через который пойдут уведомления: сборки из Xcode получают их из «песочницы».
+enum PushEnvironment: String, Sendable, Encodable {
+    case production
+    case sandbox
+
+    static var current: PushEnvironment {
+        #if DEBUG
+        .sandbox
+        #else
+        .production
+        #endif
+    }
 }

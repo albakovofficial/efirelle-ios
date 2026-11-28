@@ -12,6 +12,8 @@ struct APIStreamRepository: StreamRepository {
     private struct UsersResult: Decodable { let users: [BlockedUser] }
     private struct KeyResult: Decodable { let streamKey: String }
     private struct RaidResult: Decodable { let viewers: Int }
+    private struct NotificationPreferences: Codable { let live: Bool }
+    private struct DeviceBody: Encodable { let token: String; let environment: PushEnvironment }
 
     // MARK: Аккаунт
 
@@ -127,6 +129,25 @@ struct APIStreamRepository: StreamRepository {
     func blockedUsers() async throws -> [BlockedUser] {
         let result: UsersResult = try await client.get("/api/me/blocks")
         return result.users
+    }
+
+    // MARK: Уведомления
+
+    func registerDevice(token: String, environment: PushEnvironment) async throws {
+        try await client.perform("PUT", "/api/me/devices", body: DeviceBody(token: token, environment: environment))
+    }
+
+    func unregisterDevice(token: String) async throws {
+        try await client.perform("DELETE", "/api/me/devices/\(token)")
+    }
+
+    func liveNotificationsEnabled() async throws -> Bool {
+        let result: NotificationPreferences = try await client.get("/api/me/notifications")
+        return result.live
+    }
+
+    func setLiveNotifications(_ enabled: Bool) async throws {
+        let _: NotificationPreferences = try await client.send("PUT", "/api/me/notifications", body: NotificationPreferences(live: enabled))
     }
 
     // MARK: Студия

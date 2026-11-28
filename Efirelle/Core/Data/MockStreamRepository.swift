@@ -64,6 +64,11 @@ struct MockStreamRepository: StreamRepository {
     func unblock(username: String) async throws { try await respond(()) }
     func blockedUsers() async throws -> [BlockedUser] { try await respond([]) }
 
+    func registerDevice(token: String, environment: PushEnvironment) async throws { try await respond(()) }
+    func unregisterDevice(token: String) async throws { try await respond(()) }
+    func liveNotificationsEnabled() async throws -> Bool { try await respond(true) }
+    func setLiveNotifications(_ enabled: Bool) async throws { try await respond(()) }
+
     func studio() async throws -> Studio { try await respond(MockData.studio) }
     func updateStudio(_ settings: Studio.Settings) async throws { try await respond(()) }
     func rotateStreamKey() async throws -> String { try await respond("demo?key=new") }

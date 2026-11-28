@@ -4,6 +4,7 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(\.streamRepository) private var repository
     @Environment(Session.self) private var session
+    @Environment(PushNotifications.self) private var push
     @State private var authMode: AuthViewModel.Mode?
 
     var body: some View {
@@ -11,6 +12,7 @@ struct ProfileView: View {
             List {
                 if let viewer = session.viewer {
                     account(viewer)
+                    NotificationsSection()
                 } else {
                     guest
                 }
@@ -18,7 +20,10 @@ struct ProfileView: View {
                 if session.viewer != nil {
                     Section {
                         Button("Выйти") {
-                            Task { await session.signOut(using: repository) }
+                            Task {
+                                await push.signOut()
+                                await session.signOut(using: repository)
+                            }
                         }
                         NavigationLink("Удалить аккаунт") { DeleteAccountView() }
                             .foregroundStyle(Palette.live)
@@ -89,4 +94,5 @@ struct ProfileView: View {
 #Preview {
     ProfileView()
         .environment(Session())
+        .environment(PushNotifications())
 }

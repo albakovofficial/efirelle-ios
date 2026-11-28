@@ -83,4 +83,5 @@ private struct OfflineStageView: View {
         WatchView(channel: MockData.Channels.timur)
     }
     .environment(Session())
+    .environment(PushNotifications())
 }

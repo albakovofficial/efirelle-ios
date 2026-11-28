@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Кнопки под видео: пауза, звук, клип, длительность эфира или возврат к прямому эфиру.
+/// Кнопки под видео: пауза, звук, качество, клип, длительность эфира или возврат к прямому эфиру.
 struct PlayerControls: View {
     let isPlaying: Bool
     let isMuted: Bool
@@ -12,6 +12,10 @@ struct PlayerControls: View {
     let onReturnToLive: () -> Void
     /// «Клип» — последние 30 секунд эфира.
     var onClip: (() -> Void)?
+    /// Варианты качества; меню появляется, когда их больше одного.
+    var qualities: [LiveStream.Quality] = []
+    var selectedQuality: URL?
+    var onSelectQuality: (URL) -> Void = { _ in }
 
     var body: some View {
         HStack(spacing: Spacing.xs) {
@@ -27,6 +31,10 @@ struct PlayerControls: View {
                 action: onToggleMute
             )
 
+            if qualities.count > 1 {
+                qualityMenu
+            }
+
             if let onClip {
                 ControlButton(systemImage: "scissors", label: "Сделать клип", action: onClip)
             }
@@ -35,6 +43,29 @@ struct PlayerControls: View {
             status
         }
         .sensoryFeedback(.impact(weight: .light), trigger: isPlaying)
+    }
+
+    private var qualityMenu: some View {
+        Menu {
+            ForEach(qualities, id: \.url) { quality in
+                Button {
+                    onSelectQuality(quality.url)
+                } label: {
+                    if quality.url == selectedQuality {
+                        Label(quality.label, systemImage: "checkmark")
+                    } else {
+                        Text(quality.label)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: TapTarget.minimum, height: TapTarget.minimum)
+                .background(Palette.surfaceMuted, in: .rect(cornerRadius: Radius.s))
+        }
+        .accessibilityLabel("Качество")
     }
 
     @ViewBuilder

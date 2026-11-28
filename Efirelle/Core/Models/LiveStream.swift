@@ -17,10 +17,18 @@ struct LiveStream: Identifiable, Hashable, Sendable, Decodable {
     let tone: Tone
     /// Адрес HLS-потока. `nil` — показываем обложку вместо видео (превью и тесты).
     let playbackURL: URL?
+    /// Качества эфира; первое — исходное. Больше одного — когда на сервере включено перекодирование.
+    let qualities: [Quality]
+
+    /// Один из вариантов качества: «Источник», «720p», «480p».
+    struct Quality: Hashable, Sendable, Decodable {
+        let label: String
+        let url: URL
+    }
 
     init(
         id: String, channel: Channel, title: String, category: String, categoryID: String, tags: [String],
-        viewers: Int, duration: Duration, status: String, tone: Tone, playbackURL: URL? = nil
+        viewers: Int, duration: Duration, status: String, tone: Tone, playbackURL: URL? = nil, qualities: [Quality] = []
     ) {
         self.id = id
         self.channel = channel
@@ -33,10 +41,11 @@ struct LiveStream: Identifiable, Hashable, Sendable, Decodable {
         self.status = status
         self.tone = tone
         self.playbackURL = playbackURL
+        self.qualities = qualities
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, channel, title, category, categoryId, tags, viewers, durationSeconds, status, tone, playbackUrl
+        case id, channel, title, category, categoryId, tags, viewers, durationSeconds, status, tone, playbackUrl, qualities
     }
 
     init(from decoder: any Decoder) throws {
@@ -52,5 +61,6 @@ struct LiveStream: Identifiable, Hashable, Sendable, Decodable {
         status = try container.decode(String.self, forKey: .status)
         tone = try container.decode(Tone.self, forKey: .tone)
         playbackURL = try container.decodeIfPresent(URL.self, forKey: .playbackUrl)
+        qualities = try container.decodeIfPresent([Quality].self, forKey: .qualities) ?? []
     }
 }

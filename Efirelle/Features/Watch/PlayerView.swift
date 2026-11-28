@@ -21,6 +21,8 @@ struct PlayerView: View {
     @State private var clipError: String?
     @State private var showsClipError = false
     @State private var showsSignIn = false
+    /// Выбранное качество; `nil` — исходное.
+    @State private var selectedQuality: URL?
     @Environment(\.streamRepository) private var repository
     @Environment(Session.self) private var session
 
@@ -33,7 +35,7 @@ struct PlayerView: View {
     var body: some View {
         VStack(spacing: Spacing.s) {
             VideoSurface(
-                url: stream.playbackURL,
+                url: source,
                 tone: stream.tone,
                 isPlaying: isPlaying,
                 isMuted: isMuted,
@@ -63,7 +65,10 @@ struct PlayerView: View {
                     } else {
                         showsClipPrompt = true
                     }
-                }
+                },
+                qualities: stream.qualities,
+                selectedQuality: source,
+                onSelectQuality: { selectedQuality = $0 }
             )
             .padding(.horizontal, Spacing.xxs)
         }
@@ -84,6 +89,14 @@ struct PlayerView: View {
         .padding(Spacing.xs)
         .background(Palette.surface, in: .rect(cornerRadius: Radius.xl))
         .shadow(color: Palette.accent.opacity(0.12), radius: 30, y: 16)
+    }
+
+    /// Адрес потока: выбранное качество, пока оно доступно, иначе исходное.
+    private var source: URL? {
+        if let selectedQuality, stream.qualities.contains(where: { $0.url == selectedQuality }) {
+            return selectedQuality
+        }
+        return stream.playbackURL
     }
 
     private func createClip() async {
